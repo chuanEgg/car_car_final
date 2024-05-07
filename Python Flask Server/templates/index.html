@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 50px;
+  }
+  h1 {
+    margin-bottom: 50px;
+  }
+  .form-container {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    flex-direction: row; /* Stack elements vertically */
+  }
+  .direction-button-container {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    flex-direction: row; /* Stack elements vertically */
+  }
+  #submitBtn {
+    width: 300px; /* Adjust width as needed */
+    height: 50px*;/* Adjust height as needed */
+    margin-top: 20px; /* Space between the dropdown and the button */
+    font-size: 30px; /* Adjust font size as needed */
+    /* Further styling */
+  }
+  #left_Button {
+    width: 250px ; /* Adjust width as needed */
+    height: 100px ; /* Adjust height as needed */
+    margin-top: 20px; /* Space between the dropdown and the button */
+    font-size: 50px; /* Adjust font size as needed */
+    /* Further styling */
+  }
+  #right_Button {
+    width: 250px; /* Adjust width as needed */
+    height: 100px; /* Adjust height as needed */
+    margin-top: 20px; /* Space between the dropdown and the button */
+    font-size: 50px; /* Adjust font size as needed */
+    /* Further styling */
+  }
+  #dropdown-list{
+  	width: 300px;
+    height: 50px;
+    font-size: 30px;
+  }
+</style>
+<head>
+    <title>Matrix</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+	<div class="direction-button-container">
+      <button id="left_Button">←</button>
+      <button id="right_Button">→</button>
+    </div>
+
+	<br>
+	<div class="form-container">
+      <center>
+        <form method="POST">
+            <select name="dropdown", id="dropdown-list">
+                {% for i in range(length) %}
+                    {% if codes[i] == default_location_code %}
+                        <option value="{{ codes[i] }}" selected>{{ names[i] }}</option>
+                    {% else %}
+                        <option value="{{ codes[i] }}">{{ names[i] }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <button type="submit" id="submitBtn" >Select</button>
+        </form>
+      </center>
+    </div>
+
+
+</body>
+
+<script>
+    $(document).ready(function(){
+        $("#left_Button").click(function(){
+            $.ajax({
+                url: '/left_button_press',
+                type: 'POST',
+                data: {},
+            });
+        });
+    });
+    $(document).ready(function(){
+        $("#right_Button").click(function(){
+            $.ajax({
+                url: '/right_button_press',
+                type: 'POST',
+                data: {},
+            });
+        });
+    });
+</script>
+</html>

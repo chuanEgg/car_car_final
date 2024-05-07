@@ -1,0 +1,42 @@
+1. install ImageMagick package
+2. install curl package
+3. install nlohmann json package
+4. install libi2c-dev
+sudo apt-get install libi2c-dev
+5. run this 
+sudo ldconfig /usr/local/lib
+6. install libgpiod
+sudo apt install libgpiod-dev
+
+BH1750 Ambient Light Sensor 
+Pin Layout
+VCC -> 3.3V
+GND -> GND
+SCL -> SCL
+SDA -> SDA
+ADD -> if ( connected to GND ) { Address = 0x23 }, else if( connected to VCC with 10k resistor pullup) { Address = 0x5C } 
+
+MMA845X Accelermometer 
+Pin layout
+VCC_IN -> 3.3V
+3.3V -> None (This can output 3.3V up to 100mA, which is not used here)
+GND -> GND
+SCL -> SCL
+SDA -> SDA
+SAO -> if ( connected to GND ) { Address = 0x1C }, else if( connected to VCC with 10k resistor pullup) { Address = 0x1D }
+INT1 -> advanced use, not utilized here
+INT2 -> advanced use, not utilized here
+
+SHT-30-D Digital temperature and humudity seneor
+Pin Layout
+VIN -> 3.3V
+GND -> GND
+SCL -> SCL
+SDA -> SDA
+AD -> if ( connected to GND ) { Address = 0x44 }, else if( connected to VCC with 10k resistor pullup) { Address = 0x45 } 
+AL -> for advanced alarm use, not utilized here
+
+EC11E Rotary Encoder with push-on switch
+With knob pointing up and three legs close to your side, A C B
+The other two legs D E are short when the button is pushed.
+
