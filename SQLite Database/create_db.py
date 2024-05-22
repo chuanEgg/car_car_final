@@ -26,10 +26,12 @@ def add_data_to_database(db_name):
     with open('location_name.csv', 'r',encoding="utf8") as csv_file:
         csv_reader = csv.reader(csv_file)
         for row in csv_reader:
-            cursor.execute("INSERT INTO Location_Names (code, Chinese_Name, English_Name, Weather_Forecast_Code_2_Days, Weather_Forecast_Code_7_Days) VALUES (?, ?, ?, ?, ?)", (row[0], row[1], row[2], row[3], row[4]))
+            cursor.execute("INSERT INTO Location_Names (id, Postal_Code, Chinese_Name, English_Name, Weather_Forecast_Code_36_Hours_ID, Weather_Forecast_Code_2_Days_ID, Weather_Forecast_Code_7_Days_ID) VALUES (?, ?, ?, ?, ?, ?, ?)", (int(''.join(filter(str.isdigit, row[0]))), row[1], row[2], row[3], row[4], row[5], row[6]))
+            cursor.execute("INSERT INTO City_Weather_36hr (id, Postal_Code, Chinese_Name, English_Name ) VALUES (?, ?, ?, ?)", (int(''.join(filter(str.isdigit, row[0]))), row[1], row[2], row[3]))
+            cursor.execute("INSERT INTO City_Township_Weather_3_Days (id, Postal_Code, Chinese_Name, English_Name ) VALUES (?, ?, ?, ?)", (int(''.join(filter(str.isdigit, row[0]))), row[1], row[2],row[3]))
             
             
-    cursor.execute("INSERT INTO Controls (ctrl,location_ctrl) VALUES (?,?)", ('0','100') )
+    cursor.execute("INSERT INTO Controls (page_ctrl,page_activation,location_id_ctrl) VALUES (?,?,?)", (0,-2147483648,0) )
 
     print(f"Successfully added data to the database {db_name}")
     

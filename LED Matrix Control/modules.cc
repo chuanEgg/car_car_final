@@ -49,6 +49,8 @@ EC11E_Mode operator++(EC11E_Mode& mode, int num){
 }
 
 BH1750::BH1750(ADDRESS_SELECT type){
+    current_mode = POWER_DOWN;
+
     switch(type){
         case GND:
             device_address = 0x23;
@@ -57,17 +59,16 @@ BH1750::BH1750(ADDRESS_SELECT type){
             device_address = 0x5C;
             break;
         default:
-            std::cout<<"BH1750 error at determining I2C device address"<<std::endl;
+            std::cerr<<"BH1750 error at determining I2C device address, Address select error"<<std::endl;
             break;
     }
+
     file = open(filename, O_RDWR);
     if (file < 0) {
-    /* ERROR HANDLING; you can check errno to see what went wrong */
-        std::cout<<"BH1750 error at opening file"<<std::endl;
+        std::cerr<<"BH1750 error at opening file"<<std::endl;
     }
-    if (ioctl(file, I2C_SLAVE, device_address) < 0) {
-    /* ERROR HANDLING; you can check errno to see what went wrong */
-        std::cout<<"BH1750 error at initializing"<<std::endl;
+    else if (ioctl(file, I2C_SLAVE, device_address) < 0) {
+        std::cerr<<"BH1750 error at initializing"<<std::endl;
     }
 
     usleep(1);
@@ -77,47 +78,133 @@ BH1750::BH1750(ADDRESS_SELECT type){
     char buf_send[1];
     buf_send[0] = 0b00000001;
     if (write(file, buf_send, 1) != 1) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"BH1750 error at power on"<<std::endl;
+        // If I2C power on command failed to deliver
+        std::cerr<<"BH1750 error at power on"<<std::endl;
     }
+    else{
+        // Successfully powered on
+        current_mode = POWER_ON;
+    }
+    
 }
 
 BH1750::~BH1750(){
+
+    switch (current_mode) {
+        case POWER_DOWN:
+            break;
+        case POWER_ON:
+            break;
+        case RESET:
+            break;
+        case CONTINUOUSLY_H_RESOLUTION_MODE:
+            break;
+        case CONTINUOUSLY_H_RESOLUTION_MODE2:
+            break;
+        case CONTINUOUSLY_L_RESOLUTION_MODE:
+            break;
+        case ONE_TIME_H_RESOLUTION_MODE:
+            break;
+        case ONE_TIME_H_RESOLUTION_MODE2:
+            break;
+        case ONE_TIME_L_RESOLUTION_MODE:
+            break;
+        default:
+            std::cerr<<"BH1750 error at closing, mode error"<<std::endl;
+            break;
+    }
+
     //little endian
     //power down command    
     char buf_send[1];
     buf_send[0] = 0b00000000;
     if (write(file, buf_send, 1) != 1) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"BH1750 error at power down"<<std::endl;
+    // If I2C power down command failed to deliver
+        std::cerr<<"BH1750 error at power down"<<std::endl;
     }
     close(file);
 }
 
+//return positive int for lux on success, -1 for failure
+//blocking for 180ms or 24 ms if using one of the three one time measurement modes
 int BH1750::get_lux(){
+    useconds_t wait_time = 0;
+    switch(current_mode){
+        case ONE_TIME_H_RESOLUTION_MODE:
+            wait_time = 180000;//wait for at least 180ms(max measurment time), specified on datasheet page 5
+
+        case ONE_TIME_H_RESOLUTION_MODE2:
+            wait_time = 180000;//wait for at least 180ms(max measurment time), specified on datasheet page 5
+
+        case ONE_TIME_L_RESOLUTION_MODE:
+            wait_time = 24000;//wait for at least 24ms(max measurment time), specified on datasheet page 5
+
+            char buf_send[1];
+            buf_send[0] = 0b00000001;
+            if (write(file, buf_send, 1) != 1) {
+                std::cerr<<"BH1750 error at powering on for one time measurement : "<<std::bitset<8>(current_mode)<<std::endl;
+                return -1;
+            }
+
+            usleep(1);
+            buf_send[0] = current_mode;
+            if (write(file, buf_send, 1) != 1) {
+                std::cerr<<"BH1750 error at sending measurement command for one time measurement : "<<std::bitset<8>(current_mode)<<std::endl;
+                return -1;
+            }
+
+            usleep(wait_time);//wait for measurement to complete
+
+            break;
+        case CONTINUOUSLY_H_RESOLUTION_MODE:
+        case CONTINUOUSLY_H_RESOLUTION_MODE2:
+        case CONTINUOUSLY_L_RESOLUTION_MODE:
+            break;
+
+        default:
+            std::cerr<<"BH1750 error at getting lux, mode error"<<std::endl;
+            break;
+    }
+
     char buf_recived[2];
     if (read(file, buf_recived, 2) != 2) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"BH1750 error at reading lux"<<std::endl;
+        //If I2C failed to read lux
+        std::cerr<<"BH1750 error at reading lux"<<std::endl;
         return -1;
     } 
     else {
-        int lux = buf_recived[0] << 8 | buf_recived[1];
+        int lux = ( int )( (double)(buf_recived[0] << 8 | buf_recived[1]) / 1.2 );
         return lux;
     }
 }
 
 int BH1750::change_mode(BH1750_Mode mode){
-    char buf_send[1];
-    buf_send[0] = mode;
-    if (write(file, buf_send, 1) != 1) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"BH1750 error at changing to mode : "<<std::bitset<8>(mode)<<std::endl;
-        return -1;
+    switch(current_mode){
+        case CONTINUOUSLY_H_RESOLUTION_MODE:
+        case CONTINUOUSLY_H_RESOLUTION_MODE2:
+        case CONTINUOUSLY_L_RESOLUTION_MODE:
+            char buf_send[1];
+            buf_send[0] = mode;
+            if (write(file, buf_send, 1) != 1) {
+                //If I2C failed to change mode
+                std::cerr<<"BH1750 error at changing to mode : "<<std::bitset<8>(mode)<<std::endl;
+                return -1;
+            }
+            else{
+                current_mode = mode;
+                return 1;
+            }
+        case POWER_ON:
+        case ONE_TIME_H_RESOLUTION_MODE: //because these three modes already return to power down after measuring once
+        case ONE_TIME_H_RESOLUTION_MODE2:
+        case ONE_TIME_L_RESOLUTION_MODE:
+            current_mode = mode;
+            return 1;
+        default:
+            std::cerr<<"BH1750 error at changing mode, mode error"<<std::endl;
+            return -1;
     }
-    else{
-        return 1;
-    }
+
 }
 
 MMA8452::MMA8452(ADDRESS_SELECT type){
@@ -129,17 +216,15 @@ MMA8452::MMA8452(ADDRESS_SELECT type){
             device_address = 0x1D;
             break;
         default:
-            std::cout<<"BH1750 error at determining I2C device address"<<std::endl;
+            std::cerr<<"BH1750 error at determining I2C device address, Address select error"<<std::endl;
             break;
     }
     file = open(filename, O_RDWR);
     if (file < 0) {
-    /* ERROR HANDLING; you can check errno to see what went wrong */
-        std::cout<<"MMA8452 error at opening file"<<std::endl;
+        std::cerr<<"MMA8452 error at opening file"<<std::endl;
     }
     if (ioctl(file, I2C_SLAVE, device_address) < 0) {
-    /* ERROR HANDLING; you can check errno to see what went wrong */
-        std::cout<<"MMA8452 error at initializing"<<std::endl;
+        std::cerr<<"MMA8452 error at initializing"<<std::endl;
     }
 
     usleep(1);
@@ -150,8 +235,8 @@ MMA8452::MMA8452(ADDRESS_SELECT type){
     buf_send[0] = 0x2A;//register address
     buf_send[1] = 1;//data 
     if (write(file, buf_send, 2) != 2) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"MMA8452 error at initializing"<<std::endl;
+        // I2C power on command failed to deliver
+        std::cerr<<"MMA8452 error at initializing"<<std::endl;
     }
 }
 
@@ -162,8 +247,8 @@ MMA8452::~MMA8452(){
     buf_send[0] = 0x2A;//register address
     buf_send[1] = 0;//data 
     if (write(file, buf_send, 2) != 2) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"MMA8452 error at powering down"<<std::endl;
+        // I2C power down command failed to deliver
+        std::cerr<<"MMA8452 error at powering down"<<std::endl;
     }
     close(file);
 }
@@ -174,38 +259,34 @@ std::vector<int> MMA8452::get_acceleration(){
     char buf_recived[4];
     buf_send[0] = 0x01;//register address
     if (write(file, buf_send, 1) != 1) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"MMA8452 error at reading acceleration"<<std::endl;
+        // I2C transaction failed
+        std::cerr<<"MMA8452 error at reading acceleration"<<std::endl;
         return acceleration;
     }
-    else{
-        if (read(file, buf_recived, 4) != 4 ) {
-        /* ERROR HANDLING: i2c transaction failed */
-            std::cout<<"MMA8452 error at reading acceleration"<<std::endl;
+    else if (read(file, buf_recived, 4) != 4 ) {
+            // I2C transaction failed
+            std::cerr<<"MMA8452 error at reading acceleration"<<std::endl;
             return acceleration;
-        } 
-        else {
-            acceleration.at(0) = ( buf_recived[0] << 8 | buf_recived[1] ) >> 4 ;
-            acceleration.at(1) = ( buf_recived[2] << 8 | buf_recived[3] ) >> 4 ;
-        }
+    } 
+    else {
+        acceleration.at(0) = ( buf_recived[0] << 8 | buf_recived[1] ) >> 4 ;
+        acceleration.at(1) = ( buf_recived[2] << 8 | buf_recived[3] ) >> 4 ;
     }
 
     buf_send[0] = 0x05;//register address
     if (write(file, buf_send, 1) != 1) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"MMA8452 error at reading acceleration"<<std::endl;
+        // I2C transaction failed
+        std::cerr<<"MMA8452 error at reading acceleration"<<std::endl;
         return acceleration;
     }
-    else{
-        if (read(file, buf_recived, 4) != 4) {
-        /* ERROR HANDLING: i2c transaction failed */
-            std::cout<<"MMA8452 error at reading acceleration"<<std::endl;
+    else if (read(file, buf_recived, 4) != 4) {
+            // I2C transaction failed
+            std::cerr<<"MMA8452 error at reading acceleration"<<std::endl;
             return acceleration;
-        } 
-        else {
-            acceleration.at(2) = ( buf_recived[0] << 8 | buf_recived[1] ) >> 4 ;
-            return acceleration;
-        }
+    } 
+    else {
+        acceleration.at(2) = ( buf_recived[0] << 8 | buf_recived[1] ) >> 4 ;
+        return acceleration;
     }
 
 }
@@ -220,19 +301,19 @@ EC11E::EC11E(int pinA, int pinB, int pin_Switch){
     timeout.tv_nsec = 0;   
 
     if( !( pinA == 5 || pinA == 6 || pinA == 12 || pinA == 13 || pinA == 16 || pinA == 17 || pinA == 18 || pinA == 19 || pinA == 20 || pinA == 21 || pinA == 22 || pinA == 23 || pinA == 24 || pinA == 25 || pinA == 26 || pinA == 27 ) ){
-        std::cout<<"EC11E error at pinA in pin assignment"<<std::endl;
+        std::cerr<<"EC11E error at pinA in pin assignment"<<std::endl;
         ok = false;
     }
     if( !( pinB == 5 || pinB == 6 || pinB == 12 || pinB == 13 || pinB == 16 || pinB == 17 || pinB == 18 || pinB == 19 || pinB == 20 || pinB == 21 || pinB == 22 || pinB == 23 || pinB == 24 || pinB == 25 || pinB == 26 || pinB == 27 ) ){
-        std::cout<<"EC11E error at pinB in pin assignment"<<std::endl;
+        std::cerr<<"EC11E error at pinB in pin assignment"<<std::endl;
         ok = false;
     }
     if( !( pin_Switch == 5 || pin_Switch == 6 || pin_Switch == 12 || pin_Switch == 13 || pin_Switch == 16 || pin_Switch == 17 || pin_Switch == 18 || pin_Switch == 19 || pin_Switch == 20 || pin_Switch == 21 || pin_Switch == 22 || pin_Switch == 23 || pin_Switch == 24 || pin_Switch == 25 || pin_Switch == 26 || pin_Switch == 27 ) ){
-        std::cout<<"EC11E error at pin_Switch in pin assignment"<<std::endl;
+        std::cerr<<"EC11E error at pin_Switch in pin assignment"<<std::endl;
         ok = false;
     }
     if(pinA == pinB || pinA == pin_Switch || pinB == pin_Switch){
-        std::cout<<"EC11E error at pin assignment, repeated pin assignment "<<std::endl;
+        std::cerr<<"EC11E error at pin assignment, repeated pin assignment "<<std::endl;
         ok = false;
     }
 
@@ -329,7 +410,7 @@ EC11E_Mode EC11E::get_rotation(){
         ++mode;
     }
 
-    std::cout<<ret_A<<" "<<ret_B<<" "<<mode<<std::endl;
+    std::cerr<<ret_A<<" "<<ret_B<<" "<<mode<<std::endl;
 
 
     
@@ -376,32 +457,30 @@ SHT30::SHT30(ADDRESS_SELECT type){
             device_address = 0x45;
             break;
         default:
-            std::cout<<"SHT30 error at determining I2C device address"<<std::endl;
+            std::cerr<<"SHT30 error at determining I2C device address"<<std::endl;
             break;
     }
     file = open(filename, O_RDWR);
     if (file < 0) {
-    /* ERROR HANDLING; you can check errno to see what went wrong */
-        std::cout<<"SHT30 error at opening file"<<std::endl;
+        std::cerr<<"SHT30 error at opening file"<<std::endl;
     }
     if (ioctl(file, I2C_SLAVE, device_address) < 0) {
-    /* ERROR HANDLING; you can check errno to see what went wrong */
-        std::cout<<"SHT30 error at initializing"<<std::endl;
+        std::cerr<<"SHT30 error at initializing"<<std::endl;
     }
 
-    
+    usleep(500); //wait for the sensor to initialize after power up, at datasheet p7 table4
 
     //little endian
-    //command for setting up high repeatable 0.5 measurments per second mode
+    //command for setting up using 1 mps, High repeatability mode, at page 11 of spec
     char buf_send[2];
-    buf_send[0] = 0x20;//MSB
-    buf_send[1] = 0x32;//LSB 
+    buf_send[0] = 0x21;//MSB
+    buf_send[1] = 0x30;//LSB 
     if (write(file, buf_send, 2) != 2) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"SHT30 error at initializing"<<std::endl;
+        // I2C power on command failed to deliver
+        std::cerr<<"SHT30 error at initializing it's mode to High repeatability mode"<<std::endl;
     }
-    
-    usleep(15); //wait for at least 15 ms to complete first measurement (datasheet page 10
+    last_measurement_time = std::chrono::system_clock::now();// set to prevent access of data before first measurement  
+    temperature_humidity.resize(2,0);// set initial value to data
 }
 
 SHT30::~SHT30(){
@@ -409,37 +488,41 @@ SHT30::~SHT30(){
     //command for canceling constant measuring 
     char buf_send[2];
     buf_send[0] = 0x30;//MSB
-    buf_send[1] = 0x93;//LSB 
+    buf_send[1] = 0x93;//LSB
+    std::chrono::time_point<std::chrono::system_clock> current_time = std::chrono::system_clock::now();
+    int time_diff = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_measurement_time).count();
+    if(time_diff < 15){
+        usleep(16-time_diff); //extra 15ms for it to complete the former measurement
+    }
     if (write(file, buf_send, 2) != 2) {
-    /* ERROR HANDLING: i2c transaction failed */
-        std::cout<<"SHT30 error at closing"<<std::endl;
+        // I2C change to idel mode command failed to deliver
+        std::cerr<<"SHT30 error at changing to idle mode"<<std::endl;
     }
     close(file);
 }
 
+//returns temp and humidity both 0 if uninitialized.
 std::vector<double> SHT30::get_temperature_humidity(){
-    static std::vector<double> temperature_humidity(2,INT_MIN);
-    char buf_send[2];
-    char buf_recived[6];
-    buf_send[0] = 0xE0;
-    buf_send[1] = 0x00;
-    if (write(file, buf_send, 2) != 2) {
-    /* ERROR HANDLING: i2c transaction failed */
-        //std::cout<<"SHT30 error at reading temperature and humidity"<<std::endl;
-        return temperature_humidity;
-    }
-    else{
-        if (read(file, buf_recived, 6) != 6) {
-        /* ERROR HANDLING: i2c transaction failed */
-            //std::cout<<"SHT30 error at reading temperature and humidity"<<std::endl;
-            return temperature_humidity;
+
+    std::chrono::time_point<std::chrono::system_clock> current_time = std::chrono::system_clock::now();
+    if(std::chrono::duration_cast<std::chrono::seconds>(current_time - last_measurement_time).count() >= 1){ //std::chrono::system_clock::now() measures time in nanoseconds
+        char buf_send[2];
+        char buf_recived[6];
+        buf_send[0] = 0xE0;
+        buf_send[1] = 0x00;
+        if (write(file, buf_send, 2) != 2) {
+            std::cerr<<"SHT30 error at sending command to retrieve temperature and humidity"<<std::endl;
+        }
+        else if (read(file, buf_recived, 6) != 6) {
+            std::cerr<<"SHT30 error at reading temperature and humidity"<<std::endl;
         } 
         else {
-            temperature_humidity.at(0) = ( buf_recived[0] << 8 | buf_recived[1] ) * 175 / 65535 - 45;
-            temperature_humidity.at(1) = ( buf_recived[3] << 8 | buf_recived[4] ) * 100 / 65535;
-            return temperature_humidity;
+            temperature_humidity.at(0) = (double)( buf_recived[0] << 8 | buf_recived[1] ) * 175 / 65535 - 45;//convert the data to readable format
+            temperature_humidity.at(1) = (double)( buf_recived[3] << 8 | buf_recived[4] ) * 100 / 65535;
         }
+        last_measurement_time = std::chrono::system_clock::now();
     }
+    return temperature_humidity;
 }
 
 Push_Button::Push_Button(int pin){

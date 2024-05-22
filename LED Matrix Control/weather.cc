@@ -6,6 +6,53 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
     return size * nmemb;
 }
 
+
+int update_City_Weather_36hr(char* Authorization_code ,City &city){
+    WeatherData_days_per_12hr weather_data_36hr;
+    WeatherData_days_per_12hr weather_data_3days;
+    weather_data_36hr.size = 3;
+    weather_data_3days.size = 6;
+    
+    //section to get data fro API
+    nlohmann::json weather_json_data;
+    std::string readBuffer;
+
+    CURL *curl;
+    CURLcode res;
+    curl = curl_easy_init();
+    std::string url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/";
+    std::string param0 = city.Weather_Forecast_Code_36_Hours_ID;
+    std::string param1 = "Authorization=" + std::string(Authorization_code);
+    std::string param2 = "format=JSON";
+    std::string param3 = "locationName=" + city.Chinese_name_city;
+    std::string total_url = url + param0 + "?" + param1 + "&" + param2 + "&" + param3;
+    if(curl) {
+      curl_easy_setopt(curl, CURLOPT_URL, total_url.c_str());
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+      res = curl_easy_perform(curl);
+      curl_easy_cleanup(curl);
+      if(res != CURLE_OK){
+        std::cerr<<"Failed to retrieve data from weather API\n"<<"curl_easy_perform() failed: "<<curl_easy_strerror(res)<<std::endl;
+        return 1;
+      }
+      else{
+        weather_json_data = nlohmann::json::parse(readBuffer) ;
+        for(int i = 0 ; i < weather_data.size ; i++){
+            weather_data.MaxT.push_back( weather_json_data["records"]["location"][0]["weatherElement"][4]["time"][i]["parameter"]["parameterName"].get<std::string>() ) ;
+            weather_data.MinT.push_back( weather_json_data["records"]["location"][0]["weatherElement"][2]["time"][i]["parameter"]["parameterName"].get<std::string>() );      
+            weather_data.PoP12h.push_back( weather_json_data["records"]["location"][0]["weatherElement"][1]["time"][i]["parameter"]["parameterName"].get<std::string>() );            
+        }
+      }
+    }
+    else{
+        std::cerr<<"Failed to initiate curl\n";
+        return 1;
+    }
+
+    return 0;
+}
+
 WeatherData_days_per_12hr get_city_township_weather_data(City &city){
     WeatherData_days_per_12hr weather_data;
     weather_data.size = 6;

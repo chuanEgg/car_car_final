@@ -28,29 +28,27 @@
 /*
 const char filename[20] = "/dev/i2c-1";
 const char chipname[20] = "gpiochip0";
-struct gpiod_chip *chip = nullptr;
 */
+volatile bool interrupt_received = false;
+struct gpiod_chip *chip = nullptr;
+
 int main(){
 
     initialize_chip();
 
-    /*
-    BH1750 light_sensor(GND);
-    light_sensor.change_mode(CONTINUOUSLY_H_RESOLUTION_MODE);
-    for(int i = 0 ; i < 100 ; i++){
-        std::cout<<light_sensor.get_lux()<<std::endl;
-        usleep(100000);
-    }
-    light_sensor.~BH1750();
-    */
+    
+    // BH1750 light_sensor(GND);
+    // light_sensor.change_mode(ONE_TIME_L_RESOLUTION_MODE);
+    // for(int i = 0 ; i < 100 ; i++){
+    //     std::cout<<light_sensor.get_lux()<<std::endl;
+    //     usleep(200000);
+    // }
+    // light_sensor.~BH1750();
+    
     /*
     MMA8452 accelerometer(GND);
-    for(int i = 0 ; i < 1000 ; i++){
-        std::vector<int> acceleration = accelerometer.get_acceleration();
-        std::cout<<acceleration[0]<<" "<<acceleration[1]<<" "<<acceleration[2]<<std::endl;
-        usleep(100000);
-    }
-    */
+    
+    
     
     
     /*
@@ -64,11 +62,13 @@ int main(){
     */
 
     SHT30 temperature_sensor(GND);
-    for(int i = 0 ; i < 1000 ; i++){
+    usleep(1500000);
+    for(int i = 0 ; i < 10 ; i++){
         std::vector<double> vv = temperature_sensor.get_temperature_humidity();
         std::cout<<vv.at(0)<<' '<<vv.at(1)<<std::endl;
-        usleep(100000);
+        usleep(1000000);
     }
+
     close_chip();
     return 0;
 }

@@ -13,12 +13,18 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 
+#include <chrono>
+#include <ctime>   
 
 #include <gpiod.h>
 
 const char filename[20] = "/dev/i2c-1";
 const char chipname[20] = "gpiochip0";
 extern struct gpiod_chip *chip;
+
+int initialize_chip();
+
+int close_chip();
 
 enum ADDRESS_SELECT{
     GND,
@@ -37,6 +43,7 @@ enum BH1750_Mode{
     ONE_TIME_L_RESOLUTION_MODE = 0b00100011
 };
 
+
 enum EC11E_Mode{
     NO_ROTATION,
     NO_ROTATION_SWITCH_PRESSED,
@@ -54,13 +61,17 @@ class BH1750{
     public:
         BH1750(ADDRESS_SELECT type);
         ~BH1750();
-        int change_mode(BH1750_Mode mode);//returns 1 on success, -1 on failure
-        int get_lux();//return positive int from 0 ~ 65535 onsuccess, -1 on failure
+
+        //returns 0 on success, 1 on failure
+        int change_mode(BH1750_Mode mode);
+
+        //return positive int from 0 ~ 65535 onsuccess, -1 on failure
+        int get_lux();
     private:
         int file;
         int adapter_number = 1;
-        //char filename[20] = "/dev/i2c-1";
         int device_address;
+        BH1750_Mode current_mode;
 };
 
 class MMA8452{
@@ -71,7 +82,7 @@ class MMA8452{
     private:
         int file;
         int adapter_number = 1;
-        //char filename[20] = "/dev/i2c-1";
+        
         int device_address;
 };
 
@@ -99,8 +110,10 @@ class SHT30{
     private:
         int file;
         int adapter_number = 1;
-        //char filename[20] = "/dev/i2c-1";
         int device_address;
+        //last time the temperature and humidity was measured
+        std::chrono::time_point<std::chrono::system_clock> last_measurement_time;
+        std::vector<double> temperature_humidity;
 };
 
 class Push_Button{
@@ -115,9 +128,7 @@ class Push_Button{
         struct timespec timeout;
 };
 
-int initialize_chip();
 
-int close_chip();
 
 
 
