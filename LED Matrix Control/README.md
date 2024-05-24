@@ -40,3 +40,17 @@ EC11E Rotary Encoder with push-on switch
 With knob pointing up and three legs close to your side, A C B
 The other two legs D E are short when the button is pushed.
 
+
+Thread management
+1. Main thread int main():
+    This thread is responsible for showing refreshing the display and showing the data on the screen. 
+    Also, it has to manage the other threads.
+2. API thread
+    Called at the start of the main thread for updating weather data for the current location and time to avoid accessing a empty database. Remember to api_thread.join() to prevent accessing an empty database when this thread isn't yet complete at updating the database.
+
+    Next, it may be called at any point of time to update the weather data for the current location and time. Designed to be called perhaps for every 30 minutes or so.
+
+    
+3. Sensor thread
+    This thread updates all the sensor's value, storing them into std:atomic variables to be accessed by the main thread.
+    This thread should also be initiated at the start of main thread, and should be ended by making std::atomic<bool> sensor_thread_control = false, then join thread to exit gracefully. 

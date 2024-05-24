@@ -100,7 +100,7 @@ CREATE TABLE City_Township_Weather_3_Days (
     endTime_2 TEXT,
     endTime_3 TEXT,
     endTime_4 TEXT,
-    endTime_5 TEXT
+    endTime_5 TEXT,
 
     Time_Of_Last_Update_In_Seconds BIGINT DEFAULT 0
 );
