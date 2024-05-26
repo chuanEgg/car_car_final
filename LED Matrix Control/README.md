@@ -54,3 +54,18 @@ Thread management
 3. Sensor thread
     This thread updates all the sensor's value, storing them into std:atomic variables to be accessed by the main thread.
     This thread should also be initiated at the start of main thread, and should be ended by making std::atomic<bool> sensor_thread_control = false, then join thread to exit gracefully. 
+
+Agreement on how to send data through FIFO(used in fifo_communacation.h, main.py)
+    Send using  field_id:data_value'\n'  , for example below
+1. For next page, id = 0
+    "0:0"
+2. For last page, id = 1
+    "1:0"
+3. For "page_ctrl", id = 2
+    "2:0"
+4. For "page_activation", id = 3
+    "3:-2147483648"
+5. For "location_id_ctrl", id = 4
+    "4:0"
+6. To terminate server
+    "end:0"

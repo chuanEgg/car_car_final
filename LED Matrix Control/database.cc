@@ -6,9 +6,6 @@ Database::Database(const char* filename){
     if(rc){
         std::cerr<<"Can't open database: "<<sqlite3_errmsg(db)<<'\n';
     }
-    // else{
-    //     std::cerr<<"Opened database successfully\n";
-    // }
 }
 
 Database::~Database(){
@@ -316,7 +313,7 @@ int Database::callback_v1(void* data, int argc, char** argv, char** azColName) {
     }
     result->page_ctrl = atoi(argv[0]);
     result->page_activation = atoi(argv[1]);
-    result->page_activation = atoi(argv[2]);
+    result->location_ctrl = atoi(argv[2]);
     return 0;
 }
 

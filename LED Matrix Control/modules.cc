@@ -1,5 +1,6 @@
 #include "modules.h"
 
+
 int initialize_chip(){
     chip = gpiod_chip_open_by_name(chipname);
     if (!chip) {
