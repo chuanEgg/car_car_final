@@ -76,7 +76,7 @@ int server_thread_function(){
     }
 
     // Listen for connections
-    std::cout << "Listening for connections...\n";
+    // std::cout << "Listening for connections...\n";
     if (listen(server_socket, 5) == -1) {
         std::cerr << "Error listening on socket\n";
         close(server_socket);
@@ -85,7 +85,7 @@ int server_thread_function(){
 
     while(true){
         // Accept a connection
-        std::cout << "Accepting connection...\n";
+        // std::cout << "Accepting connection...\n";
         int client_socket = accept(server_socket, NULL, NULL);
         if (client_socket == -1) {
             std::cerr << "Error accepting connection\n";
@@ -94,7 +94,7 @@ int server_thread_function(){
         }
 
         // Receive data
-        std::cout << "Receiving data...\n";
+        // std::cout << "Receiving data...\n";
         char buffer[1024];
         ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
         if (bytes_received == -1) {
@@ -113,7 +113,7 @@ int server_thread_function(){
             return 0;
         }
         else{
-            std::cout<<"Data received: "<<data<<std::endl;
+            // std::cout<<"Data received: "<<data<<std::endl;
             switch(data[0]){
                 case '0':
                     page_increment = 1;

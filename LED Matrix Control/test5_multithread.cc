@@ -125,7 +125,7 @@ int server_thread_function(){
     }
 
     // Listen for connections
-    std::cout << "Listening for connections...\n";
+    // std::cout << "Listening for connections...\n";
     if (listen(server_socket, 5) == -1) {
         std::cerr << "Error listening on socket\n";
         close(server_socket);
@@ -134,7 +134,7 @@ int server_thread_function(){
 
     while(true){
         // Accept a connection
-        std::cout << "Accepting connection...\n";
+        // std::cout << "Accepting connection...\n";
         int client_socket = accept(server_socket, NULL, NULL);
         if (client_socket == -1) {
             std::cerr << "Error accepting connection\n";
@@ -143,7 +143,7 @@ int server_thread_function(){
         }
 
         // Receive data
-        std::cout << "Receiving data...\n";
+        // std::cout << "Receiving data...\n";
         char buffer[1024];
         ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
         if (bytes_received == -1) {
@@ -162,7 +162,7 @@ int server_thread_function(){
             return 0;
         }
         else{
-            std::cout<<"Data received: "<<data<<std::endl;
+            // std::cout<<"Data received: "<<data<<std::endl;
             switch(data[0]){
                 case '0':
                     page_increment = 1;
@@ -291,21 +291,30 @@ int main(){
     std::cout<<"city updated from database\n";
 
     int n = 0;
-    while(n<15){
-        std::cout<<(double)(SHT30_temperature_x10)/10<<' '<<(double)(SHT30_humidity_x10)/10<<' '<<BH1750_lux<<std::endl;
-        std::cout<<city.Chinese_name_city<<' '<<city.Chinese_name_township<<std::endl;
-        std::cout<<city.English_name_city<<' '<<city.English_name_township<<std::endl;
-        std::cout<<city.City_Weather_36hr.PoP12h.at(0)<<std::endl;
-        std::cout<<city.City_Weather_36hr.Time_Of_Last_Update_In_Seconds<<std::endl;
+    int last_city_id = -1;
+    while(n<30){
+        if(last_city_id != city.id){
+            std::cout<<(double)(SHT30_temperature_x10)/10<<' '<<(double)(SHT30_humidity_x10)/10<<' '<<BH1750_lux<<std::endl;
+            std::cout<<city.Chinese_name_city<<' '<<city.Chinese_name_township<<std::endl;
+            std::cout<<city.English_name_city<<' '<<city.English_name_township<<std::endl;
+            std::cout<<"高溫:"<<city.City_Township_Weather_3_Days.MaxT.at(0)<<"C ";
+            std::cout<<"低溫:"<<city.City_Township_Weather_3_Days.MinT.at(0)<<"C ";
+            std::cout<<"降雨機率:"<<city.City_Weather_36hr.PoP12h.at(0)<<'%'<<std::endl;
+            // std::cout<<city.City_Weather_36hr.Time_Of_Last_Update_In_Seconds<<std::endl;
+            last_city_id = city.id;
+        }
+
         switch(server_flag){
             case CHANGED_page_increment:
-                page_increment = 0;
                 page = int_to_page_type((int)page + page_increment);
+                if(page_increment==1){std::cout<<"Next Page\n";}
+                else if(page_increment==-1){std::cout<<"Last Page\n";}
+                page_increment = 0;
                 server_flag = NO_DATA;
                 break;
             case CHANGED_page_activation:
-                page_activation = 0;
                 server_flag = NO_DATA;
+                // page_activation = 0;
                 break;
             case CHANGED_location_ctrl:
                 city = database.get_city(location_ctrl);
@@ -316,12 +325,13 @@ int main(){
                 break;
         }
 
+        usleep(1000000);
         if(api_thread.joinable()){
             api_thread.join();
-            std::cout<<"API thread joined\n";
+            // std::cout<<"API thread joined\n";
             database.update_city_from_database(city);
         }        
-        usleep(1000000);
+        
         n++;
     }
 
