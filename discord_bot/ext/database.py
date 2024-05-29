@@ -70,7 +70,12 @@ class database(commands.Cog):
         except Exception as e:
             print("Error in sending data to LED Matrix: ", e)
 
-
+    @app_commands.command(name="location", description="switch to a specific location")
+    @app_commands.describe("location", "The the location you want to switch to")
+    async def location(self, interaction: discord.Interaction, location: str):
+        # send command to LED matrix program
+        
+        await interaction.response.send_message(f"Switched to location {location}", ephemeral=True)
 
 
 async def setup(bot):
