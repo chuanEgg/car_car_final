@@ -48,10 +48,11 @@ ImageVector LoadImageAndScaleImage(const char *filename, int target_width, int t
 // Copy an image to a Canvas. Note, the RGBMatrix is implementing the Canvas
 // interface as well as the FrameCanvas we use in the double-buffering of the
 // animted image.
-void CopyImageToCanvas(const Magick::Image &image, rgb_matrix::Canvas *canvas);
+void CopyImageToCanvas(const Magick::Image &image, rgb_matrix::Canvas *canvas, int x_coordinate, int y_coordinate);
 
 // An animated image has to constantly swap to the next frame.
 // We're using double-buffering and fill an offscreen buffer first, then show.
-void ShowAnimatedImagev2(const ImageVector &images, rgb_matrix::Canvas * canvas);
+// x and y are the coordinates on screen where the top left corner of the image will be placed.
+void ShowAnimatedImagev2(const ImageVector &images, rgb_matrix::Canvas * canvas, int x_coordinate, int y_coordinate);
 
 #endif

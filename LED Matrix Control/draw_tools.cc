@@ -42,14 +42,14 @@ ImageVector LoadImageAndScaleImage(const char *filename, int target_width, int t
   return result;
 }
 
-void CopyImageToCanvas(const Magick::Image &image, rgb_matrix::Canvas *canvas) {
-  const int offset_x = 0, offset_y = 0;  // If you want to move the image.
+void CopyImageToCanvas(const Magick::Image &image, rgb_matrix::Canvas *canvas, int x_coordinate, int y_coordinate) {
+  // const int offset_x = 0, offset_y = 0;  // If you want to move the image.
   // Copy all the pixels to the canvas.
   for (size_t y = 0; y < image.rows(); ++y) {
     for (size_t x = 0; x < image.columns(); ++x) {
       const Magick::ColorRGB &c = image.pixelColor(x, y);
       if (MagickCore::ScaleQuantumToChar(c.quantumAlpha()) > 0) {
-        canvas->SetPixel(x + offset_x, y + offset_y,
+        canvas->SetPixel(x + x_coordinate, y + y_coordinate,
           static_cast<unsigned char>(c.red() * 255),
           static_cast<unsigned char>(c.green() * 255),
           static_cast<unsigned char>(c.blue() * 255));
@@ -58,9 +58,9 @@ void CopyImageToCanvas(const Magick::Image &image, rgb_matrix::Canvas *canvas) {
   }
 }
 
-void ShowAnimatedImagev2(const ImageVector &images, rgb_matrix::Canvas * canvas) {
+void ShowAnimatedImagev2(const ImageVector &images, rgb_matrix::Canvas * canvas, int x_coordinate, int y_coordinate) {
   static int frame_num = 0;
-  CopyImageToCanvas(images[frame_num], canvas);
+  CopyImageToCanvas(images.at(frame_num), canvas, x_coordinate, y_coordinate);
   frame_num += 1;
   frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
 }

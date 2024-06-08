@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(Matrix)
 set(CMAKE_CXX_STANDARD 11)
-set(result_exe "test5_multithread")
-set(file1 "test5_multithread.cc")
+set(result_exe "test8_combined")
+set(file1 "test8_combined.cc")
 
 # Include pkg-config support
 include(FindPkgConfig)
@@ -12,7 +12,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pthread -O3")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(${result_exe} ${file1} modules.cc modules.h draw_tools.h draw_tools.cc database.h database.cc)
+add_executable(${result_exe} ${file1} modules.cc modules.h draw_tools.h draw_tools.cc database.h database.cc led-control.h led-control.cc)
 
 find_package(nlohmann_json REQUIRED)
 #check if nlohmann_json was found

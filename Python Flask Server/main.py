@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request, g
+from flask_asyncio import AsyncIO
 import sqlite3, socket
 
 # Define the location of database file
@@ -8,7 +9,7 @@ LED_Matrix_server_address = ('localhost', 15000)
 
 
 app = Flask(__name__)
-
+aio = AsyncIO(app)
 
 def send_data_to_LED_Matrix(data:str):
 	try:

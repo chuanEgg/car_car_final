@@ -69,3 +69,29 @@ Agreement on how to send data through FIFO(used in fifo_communacation.h, main.py
     "4:0"
 6. To terminate server
     "end:0"
+
+
+
+
+Custom Pin layout for HUB75 to LED Matrix
+
+3.3V
+GPIO 2
+GPIO 3
+GPIO 4
+GND
+GPIO 17
+GPIO 27
+GPIO 22
+3.3V
+GPIO 10 MOSI
+GPIO 9 MISO
+GPIO 11 SCLK
+GND
+GPIO 0 (EEPROM SDA)
+GPIO 5
+GPIO 6
+GPIO 13 (PWM1)
+GPIO 19 (PCM FS)
+GPIO 26
+GND

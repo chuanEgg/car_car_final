@@ -213,6 +213,61 @@ struct HardwareMapping matrix_hardware_mappings[] = {
     .p0_b2         = GPIO_BIT(25),
   },
 
+    /*
+   * The mapping edited by Benini because only 1 64*32 led panel is used, 
+   * other pins have to be reserved for extensive use.
+   */
+  {
+    .name          = "custom",
+
+    .output_enable = GPIO_BIT(18),
+    .clock         = GPIO_BIT(17),
+    .strobe        = GPIO_BIT(4),
+
+    /* Address lines */
+    .a             = GPIO_BIT(22),
+    .b             = GPIO_BIT(23),
+    .c             = GPIO_BIT(24),
+    .d             = GPIO_BIT(25),
+    .e             = GPIO_BIT(15),  /* RxD kept free unless 1:64 */
+
+    /* Parallel chain 0, RGB for both sub-panels */
+    .p0_r1         = GPIO_BIT(11),  /* masks: SPI0_SCKL  */
+    .p0_g1         = GPIO_BIT(27),  /* Not on RPi1, Rev1; use "regular-pi1" instead */
+    .p0_b1         = GPIO_BIT(7),   /* masks: SPI0_CE1   */
+    .p0_r2         = GPIO_BIT(8),   /* masks: SPI0_CE0   */
+    .p0_g2         = GPIO_BIT(9),   /* masks: SPI0_MISO  */
+    .p0_b2         = GPIO_BIT(10),  /* masks: SPI0_MOSI  */
+  },
+
+    /*
+   * The mapping edited by Benini because only 1 64*32 led panel is used, 
+   * other pins have to be reserved for extensive use.
+   * This is used for testing purposes.
+   */
+  {
+    .name          = "custom for testing",
+
+    .output_enable = GPIO_BIT(7),
+    .clock         = GPIO_BIT(8),
+    .strobe        = GPIO_BIT(10),
+
+    /* Address lines */
+    .a             = GPIO_BIT(24),
+    .b             = GPIO_BIT(27),
+    .c             = GPIO_BIT(25),
+    .d             = GPIO_BIT(22),
+    .e             = GPIO_BIT(9), 
+
+    /* Parallel chain 0, RGB for both sub-panels */
+    .p0_r1         = GPIO_BIT(14),  
+    .p0_g1         = GPIO_BIT(4),  
+    .p0_b1         = GPIO_BIT(15),   
+    .p0_r2         = GPIO_BIT(18),   
+    .p0_g2         = GPIO_BIT(17),   
+    .p0_b2         = GPIO_BIT(23),  
+  },
+
 #ifdef ENABLE_WIDE_GPIO_COMPUTE_MODULE
   /*
    * Custom pin-out for compute-module
