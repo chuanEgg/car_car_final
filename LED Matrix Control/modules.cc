@@ -542,3 +542,68 @@ Push_Button::~Push_Button(){
 bool Push_Button::get_state(){
     return gpiod_line_get_value(Button);
 }
+
+
+Arduino_Peripherals(int address){
+    device_address = address;
+    file = open(filename, O_RDWR);
+    if (file < 0) {
+        std::cerr<<"Arduino_Peripherals error at opening file"<<std::endl;
+    }
+    if (ioctl(file, I2C_SLAVE, device_address) < 0) {
+        std::cerr<<"Arduino_Peripherals error at initializing"<<std::endl;
+    }
+
+}
+~Arduino_Peripherals(){
+    char buf_send[1];
+    buf_send[0] = 0b00000000;
+    if (write(file, buf_send, 1) != 1) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at powering down"<<std::endl;
+    }
+    close(file);
+}
+
+
+int led_control(int LED_number, int pwm_R, int pwm_G, int pwm_B){
+    char buf_send[5];
+    buf_send[0] = 0b00000001;
+    buf_send[1] = LED_number;
+    buf_send[2] = pwm_R;
+    buf_send[3] = pwm_G;
+    buf_send[4] = pwm_B;
+
+    if (write(file, buf_send, 5) != 5) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at controlling LED"<<std::endl;
+        return 1;
+    }
+    return 0;
+
+}
+
+
+int motor_control(int motor_number, int pwm_value){
+    char buf_send[2];
+    buf_send[0] = motor_number;
+    buf_send[1] = pwm_value;
+    if (write(file, buf_send, 2) != 2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at controlling motor"<<std::endl;
+        return 1;
+    }
+    return 0;
+
+}
+
+
+//Function to get the distance sensor value on the Arduino
+//sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
+//return positive int from 0 ~ 65535 on success, -1 on failure
+int get_distance_sensor_value(int sensor_number);
+
+//Function to get the hall sensor value on the Arduino
+//sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
+//return positive int from 0 ~ 65535 on success, -1 on failure
+int get_hall_sensor_value(int sensor_number);

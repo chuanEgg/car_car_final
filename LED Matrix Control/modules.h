@@ -128,7 +128,39 @@ class Push_Button{
         struct timespec timeout;
 };
 
+class Arduino_Peripherals{
+    public:
+        //initialize the Arduino peripherals
+        //pass in the i2c address of the arduino
+        Arduino_Peripherals(int address);
+        ~Arduino_Peripherals();
+        
+        //Function to control the LED RGB PWM values on the Arduino
+        //LED_number: 0 (Red), 1 (Green), 2 (Blue), pwm_value: 0 ~ 255
+        //return 0 on success, 1 on failure
+        int led_control(int LED_number, int pwm_R, int pwm_G, int pwm_B);
 
+        //Function to control the motor on the Arduino
+        //motor_number: 0 (Motor 1), 1 (Motor 2), pwm_value: 0 ~ 255
+        //return 0 on success, 1 on failure
+        int motor_control(int motor_number, int pwm_value);
+
+
+        //Function to get the distance sensor value on the Arduino
+        //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
+        //return positive int from 0 ~ 65535 on success, -1 on failure
+        int get_distance_sensor_value(int sensor_number);
+
+        //Function to get the hall sensor value on the Arduino
+        //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
+        //return positive int from 0 ~ 65535 on success, -1 on failure
+        int get_hall_sensor_value(int sensor_number);
+
+    private:
+        int file;
+        int adapter_number = 1;
+        int device_address;
+}
 
 
 

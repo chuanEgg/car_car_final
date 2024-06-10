@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, request, g
-from flask_asyncio import AsyncIO
+import asyncio
 import sqlite3, socket
 
 # Define the location of database file
@@ -9,9 +9,8 @@ LED_Matrix_server_address = ('localhost', 15000)
 
 
 app = Flask(__name__)
-aio = AsyncIO(app)
 
-def send_data_to_LED_Matrix(data:str):
+async def send_data_to_LED_Matrix(data:str):
 	try:
 		# Create a socket object
 		client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -69,7 +68,7 @@ def hello():
 	return render_template('index.html', names=name_list, codes = code_list, length = len(code_list), default_location_code = default_location_code)
 
 @app.route('/left_button_press', methods=['POST'])
-def left_button_press():
+async def left_button_press():
 	data = "1:0"
 	send_data_to_LED_Matrix(data)
 	# try:
@@ -85,7 +84,7 @@ def left_button_press():
 	return jsonify({"success": True})
 
 @app.route('/right_button_press', methods=['POST'])
-def right_button_press():
+async def right_button_press():
 	data = "0:0"
 	send_data_to_LED_Matrix(data)
 	# try:

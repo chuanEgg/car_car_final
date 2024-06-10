@@ -248,6 +248,8 @@ int main(){
 
     // initialize_chip();
     std::thread sensor_thread(sensor_thread_function);// initiate sensor thread
+
+    // LED_RGB_Strip led_strip(11,5,6);// initiate LED strip with pinR = 11, pinG = 5, pinB = 6
     
     usleep(5000000);
 
@@ -330,7 +332,8 @@ int main(){
             // std::cout<<"API thread joined\n";
             database.update_city_from_database(city);
             led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-        }        
+        }
+
         
         n++;
         std::cout<<n<<'\n';

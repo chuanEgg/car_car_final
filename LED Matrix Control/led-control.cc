@@ -27,8 +27,8 @@ LED_Matrix::LED_Matrix(const char* font_filename):time_font_filename(font_filena
     defaults.parallel = 1;
     defaults.show_refresh_rate = false;
     defaults.limit_refresh_rate_hz = 300;
-    defaults.disable_hardware_pulsing = true;
-    defaults.pwm_lsb_nanoseconds = 100;
+    defaults.disable_hardware_pulsing = false;
+    defaults.pwm_lsb_nanoseconds = 200;
     defaults.scan_mode = 0;
     // defaults.hardware_mapping = "custom";
     defaults.hardware_mapping = "custom for testing";
@@ -212,49 +212,59 @@ int LED_Matrix::page0(std::atomic<int>& temperature, std::atomic<int>& humidity,
 }
 
 int LED_Matrix::page1(std::atomic<int>& temperature, std::atomic<int>& humidity, std::atomic<int>& lux, const City& city ){
-    int n = 0;
     int frame_num = 0;
+
+    int framerate = 5;
+    auto last_time = std::chrono::system_clock::now();//for maintaining visual framerate
+
     ImageVector images = LoadImageAndScaleImage("../images/maid_dragon_32.gif", 32, 32);
 
     while(in_use){
 
-        if(n%10==0){
-            // ShowAnimatedImagev2(LoadImageAndScaleImage("../images/maid_dragon_32.gif", 32, 32), off_screen_canvas,0,0);
-            
-            CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 0, 0);
-            frame_num += 1;
-            frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
 
-            // Update the display
-            off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
-            // Clear the canvas for next draw
-            off_screen_canvas->Clear();
-            n = 0;
+        // ShowAnimatedImagev2(LoadImageAndScaleImage("../images/maid_dragon_32.gif", 32, 32), off_screen_canvas,0,0);
+        
+        CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 0, 0);
+        frame_num += 1;
+        frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
+
+        // Update the display
+        off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
+        // Clear the canvas for next draw
+        off_screen_canvas->Clear();
+
+        // to maintain visual framerate
+        if((   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_time).count() < 1000/framerate)){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000/framerate) - std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_time));
         }
-        n++;
+        last_time = std::chrono::system_clock::now();
+
     }
     return 0;
 }
 
 int LED_Matrix::page2(std::atomic<int>& temperature, std::atomic<int>& humidity, std::atomic<int>& lux, const City& city ){
-    int n = 0;
     int frame_num = 0;
+    int framerate = 5;
+    auto last_time = std::chrono::system_clock::now();//for maintaining visual framerate
+    
     ImageVector images = LoadImageAndScaleImage("../images/rem_32.gif", 32, 32);
     while(in_use){
-        
-        if(n%10==0){
 
-            CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 0, 0);
-            frame_num += 1;
-            frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
-                        
-            // Update the display
-            off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
-            // Clear the canvas for next draw
-            off_screen_canvas->Clear();
-            n = 0;
+        CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 0, 0);
+        frame_num += 1;
+        frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
+                    
+        // Update the display
+        off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
+        // Clear the canvas for next draw
+        off_screen_canvas->Clear();
+
+        if((   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_time).count() < 1000/framerate)){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000/framerate) - std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_time));
         }
-        n++;
+        last_time = std::chrono::system_clock::now();
+
     }
     return 0;
 }
