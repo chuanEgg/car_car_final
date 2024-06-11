@@ -543,8 +543,7 @@ bool Push_Button::get_state(){
     return gpiod_line_get_value(Button);
 }
 
-
-Arduino_Peripherals(int address){
+Arduino_Peripherals::Arduino_Peripherals(int address){
     device_address = address;
     file = open(filename, O_RDWR);
     if (file < 0) {
@@ -555,7 +554,7 @@ Arduino_Peripherals(int address){
     }
 
 }
-~Arduino_Peripherals(){
+Arduino_Peripherals::~Arduino_Peripherals(){
     char buf_send[1];
     buf_send[0] = 0b00000000;
     if (write(file, buf_send, 1) != 1) {
@@ -566,7 +565,7 @@ Arduino_Peripherals(int address){
 }
 
 
-int led_control(int LED_number, int pwm_R, int pwm_G, int pwm_B){
+int Arduino_Peripherals::led_control(int LED_number, int pwm_R, int pwm_G, int pwm_B){
     char buf_send[5];
     buf_send[0] = 0b00000001;
     buf_send[1] = LED_number;
@@ -584,7 +583,7 @@ int led_control(int LED_number, int pwm_R, int pwm_G, int pwm_B){
 }
 
 
-int motor_control(int motor_number, int pwm_value){
+int Arduino_Peripherals::motor_control(int motor_number, int pwm_value){
     char buf_send[2];
     buf_send[0] = motor_number;
     buf_send[1] = pwm_value;
@@ -601,9 +600,48 @@ int motor_control(int motor_number, int pwm_value){
 //Function to get the distance sensor value on the Arduino
 //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
 //return positive int from 0 ~ 65535 on success, -1 on failure
-int get_distance_sensor_value(int sensor_number);
+int Arduino_Peripherals::get_distance_sensor_value(int sensor_number){
+    char buf_send[2];
+    buf_send[0] = 0b00000011;
+    buf_send[1] = sensor_number;
+    if (write(file, buf_send, 2) != 2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at getting distance sensor value"<<std::endl;
+        return -1;
+    }
+
+    char buf_recived[2];
+    if (read(file, buf_recived, 2) != 2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at getting distance sensor value"<<std::endl;
+        return -1;
+    } 
+    else {
+        return ( int )(buf_recived[0] << 8 | buf_recived[1]);
+    }
+
+}
 
 //Function to get the hall sensor value on the Arduino
 //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
 //return positive int from 0 ~ 65535 on success, -1 on failure
-int get_hall_sensor_value(int sensor_number);
+int Arduino_Peripherals::get_hall_sensor_value(int sensor_number){
+    char buf_send[2];
+    buf_send[0] = 0b00000100;
+    buf_send[1] = sensor_number;
+    if (write(file, buf_send, 2) != 2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at getting hall sensor value"<<std::endl;
+        return -1;
+    }
+
+    char buf_recived[1];
+    if (read(file, buf_recived, 1) != 1) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at getting hall sensor value"<<std::endl;
+        return -1;
+    } 
+    else {
+        return ( int )(buf_recived[0]);
+    }
+}

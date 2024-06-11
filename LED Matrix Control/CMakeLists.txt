@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(Matrix)
 set(CMAKE_CXX_STANDARD 11)
-set(result_exe "test8_combined")
-set(file1 "test8_combined.cc")
+set(result_exe "test9_arduino_binding")
+set(file1 "test9_arduino_binding.cc")
 
 # Include pkg-config support
 include(FindPkgConfig)

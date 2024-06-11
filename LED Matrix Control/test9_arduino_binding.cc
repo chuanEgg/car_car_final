@@ -63,7 +63,15 @@ std::atomic<int> location_ctrl(0);
 
 std::atomic<int> SHT30_temperature_x10(0), SHT30_humidity_x10(0), BH1750_lux(0);
 
-std::atomic<bool> sensor_thread_control(true);//1 for running, 0 for stopping
+
+SHT30* sht30;
+BH1750* bh1750;
+Arduino_Peripherals* arduino_peripherals;
+
+
+void signal_handler(int signal){
+    interrupt_received = true;
+}
 
 void api_thread_function(const City& city, const char* api_key){
     Database database(database_filename);
@@ -72,19 +80,28 @@ void api_thread_function(const City& city, const char* api_key){
     }
 }
 
-void sensor_thread_function(){
-    SHT30 sht30(GND);
-    BH1750 bh1750(GND);
-    bh1750.change_mode(ONE_TIME_L_RESOLUTION_MODE);
+void initiate_peripherals(){
+    sht30 = new SHT30(GND);
+    bh1750 = new BH1750(GND);
+    bh1750->change_mode(CONTINUOUSLY_L_RESOLUTION_MODE);
+    arduino_peripherals = new Arduino_Peripherals(0x03);
 
     std::vector<double> temp_humidity;
-    while(sensor_thread_control){
-        temp_humidity = sht30.get_temperature_humidity();
-        SHT30_temperature_x10 = (int)(round(temp_humidity.at(0)*10));
-        SHT30_humidity_x10 = (int)(round(temp_humidity.at(1)*10));
-        BH1750_lux = bh1750.get_lux();
-        usleep(1000000);
-    }
+    
+    temp_humidity = sht30->get_temperature_humidity();
+    SHT30_temperature_x10 = (int)(round(temp_humidity.at(0)*10));
+    SHT30_humidity_x10 = (int)(round(temp_humidity.at(1)*10));
+    BH1750_lux = bh1750->get_lux();
+    usleep(100000);
+}
+
+void update_sensors(){
+    std::vector<double> temp_humidity;
+    
+    temp_humidity = sht30->get_temperature_humidity();
+    SHT30_temperature_x10 = (int)(round(temp_humidity.at(0)*10));
+    SHT30_humidity_x10 = (int)(round(temp_humidity.at(1)*10));
+    BH1750_lux = bh1750->get_lux();
 }
 
 int server_thread_function(){
@@ -246,12 +263,10 @@ int main(){
     std::cout<<api_key<<std::endl;
     
 
-    // initialize_chip();
-    std::thread sensor_thread(sensor_thread_function);// initiate sensor thread
+    initiate_peripherals();// initiate sensors
 
-    // LED_RGB_Strip led_strip(11,5,6);// initiate LED strip with pinR = 11, pinG = 5, pinB = 6
     
-    usleep(5000000);// sleep to prevent conflict of initiating LED matrix and I2C
+    usleep(5000000);// sleep to prevent conflict of initiating LED matrix and I2C devices
 
     LED_Matrix led_matrix(time_font_filename);// initiate LED matrix
 
@@ -273,7 +288,7 @@ int main(){
         return 1;
     }
 
-    led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
+    led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);// initialize the LED matrix content
 
     int n = 0;
     int last_city_id = -1;
@@ -294,20 +309,12 @@ int main(){
         
         switch(server_flag){
             case CHANGED_page_increment:
-                std::cout<<"to 1\n";
                 page = int_to_page((int)page + page_increment);
-                std::cout<<"to 2\n";
                 if(page_increment >= 1){
-                    std::cout<<"Next Page\n";
-                    std::cout<<"to 3\n";
                     led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-                    std::cout<<"to 4\n";
                 }
                 else if(page_increment <= -1){
-                    std::cout<<"to 5\n";
-                    std::cout<<"Last Page\n";
                     led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-                    std::cout<<"to 6\n";
                 }
                 page_increment = 0;
                 server_flag = NO_DATA;
@@ -336,16 +343,19 @@ int main(){
 
         
         n++;
-        std::cout<<n<<'\n';
+        update_sensors();
+        std::cout<<"Distance Sensor Value:"<<arduino_peripherals->get_distance_sensor_value(0)<<std::endl;
+        std::cout<<"Hall Sensor Value:"<<arduino_peripherals->get_hall_sensor_value(0)<<std::endl;
+        arduino_peripherals->led_control(0,n%256,n%256,n%256);
+        arduino_peripherals->motor_control(0,200);
+
     }
 
     led_matrix.change_page(Page::Stop, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-
-    sensor_thread_control = false;
+    arduino_peripherals->led_control(0,0,0,0);
+    arduino_peripherals->motor_control(0,0);
     terminate_server_function();
-    sensor_thread.join();
     server_thread.join();
-    // close_chip();
 
     return 0;
 }

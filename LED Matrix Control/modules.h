@@ -160,7 +160,7 @@ class Arduino_Peripherals{
         int file;
         int adapter_number = 1;
         int device_address;
-}
+};
 
 
 

@@ -1,5 +1,5 @@
 #include <Wire.h>
-#include <Ultrasonic.h>
+#include <HCSR04.h>
 
 
 class LED_Strip{
@@ -57,26 +57,22 @@ class Motor{
     int pin_num;
 };
 
-class Distance_Sensor{
-  public:
-    Distance_Sensor(int Trig, int Echo){
-      distance_sensor = new Ultrasonic(Trig, Echo);
-    }
-    ~Distance_Sensor(){
-      delete distance_sensor;
-    }
-    int get_distance(){
-      distance = distance_sensor->read();
-      return distance;
-    }
-  private:
-    Ultrasonic* distance_sensor;
-    int distance;
-};
 
 class Hall_Sensor{
   public:
     Hall_Sensor(int pin_num):pin(pin_num){
+      pinMode(pin,INPUT);
+    }
+    int get_value(){
+      return digitalRead(pin);
+    }
+  private:
+    int pin;
+};
+
+class Button{
+  public:
+    Button(int pin_num):pin(pin_num){
       pinMode(pin,INPUT);
     }
     int get_value(){

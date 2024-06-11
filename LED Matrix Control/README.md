@@ -97,15 +97,22 @@ GPIO 26
 GND
 
 Arduino acepts these custom commands
-Usually with the follwing order [device_type_id,device_id,action...s]
+Usually with the follwing order [device_type_id, device_id, action...s(if any) ]
 1. Power up : nothing has to be done
 2. Power down : send bytes = [0b00000000], only one byte is needed
 3. LED strip : 
     device_type_id = 1, device_id = 0, action = pwm value for red, pwm value for green, pwm value for blue
-    e.g. change the brigntness of Red to 240, green to 0, blue to 100 : send bytes = [0b00000001,0,240,0,100]
+    e.g. change the brigntness of Red to 240, green to 0, blue to 100 : send bytes = [0b00000001, 0, 240, 0, 100]
 4. Motor:
     device_type_id = 2, device_id = 0, action = your desired pwm value
-    e.g. change the pwm of motor to 240 : send bytes = [0b00000002,0,240]
+    e.g. change the pwm of motor to 240 : send bytes = [0b00000010, 0, 240]
+5. Distance Sensor(Ultrasonic):
+    device_type_id = 3, device_id = 0
+    e.g. retireve the distance of the first Distance Sensor : send bytes = [0b00000011, 0], recieve bytes = [MSB, LSB]
+5. Hall Sensor(Ultrasonic):
+    device_type_id = 4, device_id = 0
+    e.g. retireve the distance of the first Hall Sensor : send bytes = [0b00000100, 0], recieve bytes = [ data ]
+    
 
 
 
