@@ -36,6 +36,12 @@ class LED_Strip{
 
 class Motor{
   public:
+
+    unsigned long duration = 10000;
+    int pwm_value = 100;
+    int current_pwm = 0;
+    unsigned long start_time = 0;
+
     //Initializer for Motor
     //Recommended to use Analog pins or digital piins with PWM
     Motor(int num):pin_num(num){
@@ -51,10 +57,13 @@ class Motor{
       num = num < 256 ? num : 255;
       num = num >= 0 ? num : 0;
       analogWrite(pin_num,num);
+      current_pwm = num;
     }
+
     
   private:
     int pin_num;
+
 };
 
 

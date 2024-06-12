@@ -97,20 +97,30 @@ GPIO 26
 GND
 
 Arduino acepts these custom commands
-Usually with the follwing order [device_type_id, device_id, action...s(if any) ]
 1. Power up : nothing has to be done
 2. Power down : send bytes = [0b00000000], only one byte is needed
 3. LED strip : 
-    device_type_id = 1, device_id = 0, action = pwm value for red, pwm value for green, pwm value for blue
-    e.g. change the brigntness of Red to 240, green to 0, blue to 100 : send bytes = [0b00000001, 0, 240, 0, 100]
+    device_id = the "serial" number of the LED strip that you're trying to access 
+    send bytes : [device_type_id = 1, device_id, pwm value for red, pwm value for green, pwm value for blue]
+    e.g. change the brigntness of LED strip 0 , Red to 240, green to 0, blue to 100 : send bytes = [0b00000001, 0, 240, 0, 100]
 4. Motor:
-    device_type_id = 2, device_id = 0, action = your desired pwm value
-    e.g. change the pwm of motor to 240 : send bytes = [0b00000010, 0, 240]
-5. Distance Sensor(Ultrasonic):
-    device_type_id = 3, device_id = 0
-    e.g. retireve the distance of the first Distance Sensor : send bytes = [0b00000011, 0], recieve bytes = [MSB, LSB]
-5. Hall Sensor(Ultrasonic):
-    device_type_id = 4, device_id = 0
+    device_id = the "serial" number of the motor that you're trying to access 
+    selection = 0, 1 or 2. 0 for setting pwm value, 1 for setting time duration for the motor to run on ce started, 2 for setting the pwm value for which the motor runs on it's own.
+    send bytes : [device_type_id = 2, device_id , selection , pwm value(0~255) or time duration value(in seconds from 0~2^32-1)]
+    e.g. change the pwm of motor 0 to 240 : send bytes = [0b00000010, 0, 0, 240]
+    e.g. change the time duration of motor 0 to 1000 seconds : send bytes = [0b00000010, 0, 1, 0,0,3,232]
+    e.g. change the pwm which the motor runs on it's own for motor 0 to 240 : send bytes = [0b00000010, 0, 2, 240]
+5. Distance Sensors(Ultrasonic):
+    selection = 0 or 1, 0 for asking the number of distance sensors that are attached, 1 for accessing individual distance sensor values ,2 for retrieveing all the distance sensor's value
+    send bytes if selection = 0 or 2: [device_type_id = 3, selection]
+    send bytes if selection = 1: [device_type_id = 3, selection, device_id]
+    recieve bytes if selection = 0 : [number of distance sensors] 
+    recieve bytes if selection = 1 : [sensor value MSB, sensor value LSB] 
+    recieve bytes if selection = 2 : [sensor 0 value MSB, sensor 0 value LSB, sensor 1 value MSB , sensor 2 value LSB...] with variable length equal to the number of distance sensors * 2 (MSB and LSB for one data occupies 2 bytes) 
+    e.g. retireve the distance of the all Distance Sensors : send bytes = [0b00000011, 1], recieve bytes = [ s0 MSB, s0 LSB, s1 MSB , s1 LSB ...]
+5. Hall Sensor:
+    device_id = the "serial" number of the Hall Sensor that you're trying to access
+    send bytes : [device_type_id = 4, device_id]
     e.g. retireve the distance of the first Hall Sensor : send bytes = [0b00000100, 0], recieve bytes = [ data ]
     
 

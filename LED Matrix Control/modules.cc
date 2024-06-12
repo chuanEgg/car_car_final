@@ -583,11 +583,13 @@ int Arduino_Peripherals::led_control(int LED_number, int pwm_R, int pwm_G, int p
 }
 
 
-int Arduino_Peripherals::motor_control(int motor_number, int pwm_value){
-    char buf_send[2];
-    buf_send[0] = motor_number;
-    buf_send[1] = pwm_value;
-    if (write(file, buf_send, 2) != 2) {
+int Arduino_Peripherals::motor_pwm_control(int motor_number, int pwm_value){
+    char buf_send[4];
+    buf_send[0] = 0b00000010;
+    buf_send[1] = motor_number;
+    buf_send[2] = 0;
+    buf_send[3] = pwm_value;
+    if (write(file, buf_send, 4) != 4) {
         // I2C power on command failed to deliver
         std::cerr<<"Arduino_Peripherals error at controlling motor"<<std::endl;
         return 1;
@@ -596,15 +598,34 @@ int Arduino_Peripherals::motor_control(int motor_number, int pwm_value){
 
 }
 
+int Arduino_Peripherals::motor_time_control(int motor_number, unsigned int time_duration){
+    char buf_send[7];
+    buf_send[0] = 0b00000010;
+    buf_send[1] = motor_number;
+    buf_send[2] = 1;
+
+    buf_send[3] = (time_duration >> 24);
+    buf_send[4] = (time_duration >> 16) % 256;
+    buf_send[5] = (time_duration >> 8) % 256;
+    buf_send[6] = time_duration % 256;
+    if (write(file, buf_send, 7) != 7) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at controlling motor"<<std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 
 //Function to get the distance sensor value on the Arduino
 //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
 //return positive int from 0 ~ 65535 on success, -1 on failure
 int Arduino_Peripherals::get_distance_sensor_value(int sensor_number){
-    char buf_send[2];
+    char buf_send[3];
     buf_send[0] = 0b00000011;
-    buf_send[1] = sensor_number;
-    if (write(file, buf_send, 2) != 2) {
+    buf_send[1] = 1;
+    buf_send[2] = sensor_number;
+    if (write(file, buf_send, 3) != 3) {
         // I2C power on command failed to deliver
         std::cerr<<"Arduino_Peripherals error at getting distance sensor value"<<std::endl;
         return -1;
@@ -620,6 +641,80 @@ int Arduino_Peripherals::get_distance_sensor_value(int sensor_number){
         return ( int )(buf_recived[0] << 8 | buf_recived[1]);
     }
 
+}
+
+
+//Function to get all the distance sensors' value on the Arduino
+//return std::vector<int> with variable length, each element is a positive int from 0 ~ 65535 on success, -1 on failure
+std::vector<int> Arduino_Peripherals::get_all_distance_sensor_value(){
+
+    if(distance_sensor_num == 0){
+        char buf_send[2];
+        buf_send[0] = 0b00000011;
+        buf_send[1] = 0;
+        if (write(file, buf_send, 2) != 2) {
+            // I2C power on command failed to deliver
+            std::cerr<<"Arduino_Peripherals error at getting the number of sensors at writing to i2c"<<std::endl;
+            return std::vector<int>(0,-1);
+        }
+
+        char buf_recived[1];
+        if (read(file, buf_recived, 1) != 1) {
+            // I2C power on command failed to deliver
+            std::cerr<<"Arduino_Peripherals error at getting the number of sensors at reading i2c"<<std::endl;
+            return std::vector<int>(0,-1);
+        }
+        distance_sensor_num = (int)buf_recived[0];
+    }
+
+    char buf_send[2];
+    buf_send[0] = 0b00000011;
+    buf_send[1] = 2;
+    if (write(file, buf_send, 2) != 2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at sending i2c command to retrieve distance sensor value"<<std::endl;
+        return std::vector<int>(0,-1);
+    }
+
+    char* buf_recived = new char[distance_sensor_num*2];
+    if (read(file, buf_recived, distance_sensor_num*2) != distance_sensor_num*2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at getting distance sensor value from i2c"<<std::endl;
+        return std::vector<int>(0,-1);
+    } 
+    std::vector<int> distances(distance_sensor_num,0);
+    for(int i = 0 ; i < distance_sensor_num ; i++){
+        distances.at(i) = ( int )(buf_recived[i*2] << 8 | buf_recived[i*2+1]);
+    }
+    delete buf_recived;
+    return distances;
+}
+
+std::vector<int> Arduino_Peripherals::get_all_distance_sensor_value(int num_sensors){
+    distance_sensor_num = num_sensors;
+
+    char buf_send[2];
+    buf_send[0] = 0b00000011;
+    buf_send[1] = 2;
+    if (write(file, buf_send, 2) != 2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at sending i2c command to retrieve distance sensor value"<<std::endl;
+        return std::vector<int>(0,-1);
+    }
+
+    char* buf_recived = new char[distance_sensor_num*2+2];
+    if (read(file, buf_recived, distance_sensor_num*2) != distance_sensor_num*2) {
+        // I2C power on command failed to deliver
+        std::cerr<<"Arduino_Peripherals error at getting distance sensor value from i2c"<<std::endl;
+        return std::vector<int>(0,-1);
+    } 
+    std::vector<int> distances(distance_sensor_num,0);
+    for(int i = 0 ; i < distance_sensor_num ; i++){
+        std::cout<<"recieved "<<i<<" from arduino distances: "<<(int)buf_recived[i*2]<<" "<<(int)buf_recived[i*2+1]<<std::endl;
+        distances.at(i) = ( int )(buf_recived[i*2] << 8 | buf_recived[i*2+1]);
+    }
+    delete buf_recived;
+    return distances;
 }
 
 //Function to get the hall sensor value on the Arduino

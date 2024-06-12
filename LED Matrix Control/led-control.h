@@ -55,6 +55,7 @@ class LED_Matrix{
         static inline rgb_matrix::Font time_font;
 
         static inline City city;
+        static inline Page current_page = Page0;
 
         static int page0(std::atomic<int>& temperature, std::atomic<int>& humidity, std::atomic<int>& lux, const City& city );
         static int page1(std::atomic<int>& temperature, std::atomic<int>& humidity, std::atomic<int>& lux, const City& city );

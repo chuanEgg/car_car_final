@@ -143,13 +143,27 @@ class Arduino_Peripherals{
         //Function to control the motor on the Arduino
         //motor_number: 0 (Motor 1), 1 (Motor 2), pwm_value: 0 ~ 255
         //return 0 on success, 1 on failure
-        int motor_control(int motor_number, int pwm_value);
+        int motor_pwm_control(int motor_number, int pwm_value);
 
+        //Function to control the motor on the Arduino
+        //motor_number: 0 (Motor 1), 1 (Motor 2), time duration: 0 ~ 2^32 - 1
+        //return 0 on success, 1 on failure
+        int motor_time_control(int motor_number, unsigned int time_duration);
 
         //Function to get the distance sensor value on the Arduino
         //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
         //return positive int from 0 ~ 65535 on success, -1 on failure
         int get_distance_sensor_value(int sensor_number);
+
+
+        //Function to get all the distance sensors' value on the Arduino if the total number of distance sensors is unknown
+        //return a vector with arbitrary length and values from 0 ~ 65535 on success, -1 on failure
+        std::vector<int> get_all_distance_sensor_value();
+
+        //Function to get all the distance sensors' value on the Arduino if the total number of distance sensors is known
+        //return a vector with arbitrary length and values from 0 ~ 65535 on success, -1 on failure
+        std::vector<int> get_all_distance_sensor_value(int num_sensors);
+
 
         //Function to get the hall sensor value on the Arduino
         //sensor_number: 0 (Sensor 1), 1 (Sensor 2), 2 (Sensor 3)
@@ -160,6 +174,8 @@ class Arduino_Peripherals{
         int file;
         int adapter_number = 1;
         int device_address;
+
+        int distance_sensor_num = 0;
 };
 
 

@@ -284,6 +284,7 @@ int main(){
     Control control = database.get_control_parameters();
     Page page = int_to_page(control.page_ctrl);
     City city = database.get_city(control.location_ctrl);
+    std::chrono::time_point<std::chrono::system_clock> timer; // timer for timeout of the LED matrix
 
     std::thread api_thread(api_thread_function, city, api_key);// update the weather data in the database
     if(api_thread.joinable()){
@@ -300,67 +301,96 @@ int main(){
     int n = 0;
     int last_city_id = -1;
 
+
+    
     while(n<30){
-        std::cout<<(double)(SHT30_temperature_x10)/10<<' '<<(double)(SHT30_humidity_x10)/10<<' '<<BH1750_lux<<std::endl;
 
-        if(last_city_id != city.id){
-            std::cout<<city.Chinese_name_city<<' '<<city.Chinese_name_township<<std::endl;
-            std::cout<<city.English_name_city<<' '<<city.English_name_township<<std::endl;
-            std::cout<<"高溫:"<<city.City_Township_Weather_3_Days.MaxT.at(0)<<"C ";
-            std::cout<<"低溫:"<<city.City_Township_Weather_3_Days.MinT.at(0)<<"C ";
-            std::cout<<"降雨機率:"<<city.City_Weather_36hr.PoP12h.at(0)<<'%'<<std::endl;
-            // std::cout<<city.City_Weather_36hr.Time_Of_Last_Update_In_Seconds<<std::endl;
-            last_city_id = city.id;
+        // update_sensors();
+        BH1750_lux = bh1750->get_lux();
+        distance_sensor_values = arduino_peripherals->get_all_distance_sensor_value(3);
+
+        if(BH1750_lux < 10 && distance_sensor_values.at(0) > 50 && distance_sensor_values.at(1) > 50){// if the light intensity is below some value and no one is detected going in or out, the LED matrix will stop
+            led_matrix->change_page(Page::Stop, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
+            usleep(1000000);// sleep for 1 second
         }
+        else if(distance_sensor_values.at(0) < 50){ // if detects someone going out (this sensor faces inside the house)
+            // todo
+            // play sound
+        }
+        else if(distance_sensor_values.at(1) < 50){ // if detects someone coming in (this sensor faces outside the house
+            // todo
+            // play sound
+        }
+        else{ // only activates if the light intensity is above some value or someone is detected going in or out
+
+            update_sensors();
+
+            std::cout<<(double)(SHT30_temperature_x10)/10<<' '<<(double)(SHT30_humidity_x10)/10<<' '<<BH1750_lux<<std::endl;
+
+            if(last_city_id != city.id){
+                std::cout<<city.Chinese_name_city<<' '<<city.Chinese_name_township<<std::endl;
+                std::cout<<city.English_name_city<<' '<<city.English_name_township<<std::endl;
+                // std::cout<<"高溫:"<<city.City_Township_Weather_3_Days.MaxT.at(0)<<"C ";
+                // std::cout<<"低溫:"<<city.City_Township_Weather_3_Days.MinT.at(0)<<"C ";
+                // std::cout<<"降雨機率:"<<city.City_Weather_36hr.PoP12h.at(0)<<'%'<<std::endl;
+                // std::cout<<city.City_Weather_36hr.Time_Of_Last_Update_In_Seconds<<std::endl;
+                last_city_id = city.id;
+            }
+
+            
+            switch(server_flag){
+                case CHANGED_page_increment:
+                    page = int_to_page((int)page + page_increment);
+                    if(page_increment >= 1){
+                        led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
+                    }
+                    else if(page_increment <= -1){
+                        led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
+                    }
+                    page_increment = 0;
+                    server_flag = NO_DATA;
+                    break;
+                case CHANGED_page_activation:
+                    server_flag = NO_DATA;
+                    // page_activation = 0;
+                    break;
+                case CHANGED_location_ctrl:
+                    city = database.get_city(location_ctrl);
+                    api_thread = std::thread(api_thread_function, city, api_key);
+                    server_flag = NO_DATA;
+                    break;
+                default:
+                    break;
+            }
+            
+
+
+            
+            if(api_thread.joinable()){
+                usleep(100000);
+                api_thread.join();
+                // std::cout<<"API thread joined\n";
+                database.update_city_from_database(city);
+                led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
+            }
+
+            
+            n++;
+            update_sensors();
+            std::cout<<distance_sensor_values.at(0)<<' '<<distance_sensor_values.at(1)<<' '<<distance_sensor_values.at(2)<<'\n';
+            std::cout<<hall_sensor_value<<std::endl;
+            arduino_peripherals->led_control(0,n%256,n%256,n%256);
+            arduino_peripherals->motor_control(0,0,200);
 
         
-        switch(server_flag){
-            case CHANGED_page_increment:
-                page = int_to_page((int)page + page_increment);
-                if(page_increment >= 1){
-                    led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-                }
-                else if(page_increment <= -1){
-                    led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-                }
-                page_increment = 0;
-                server_flag = NO_DATA;
-                break;
-            case CHANGED_page_activation:
-                server_flag = NO_DATA;
-                // page_activation = 0;
-                break;
-            case CHANGED_location_ctrl:
-                city = database.get_city(location_ctrl);
-                api_thread = std::thread(api_thread_function, city, api_key);
-                server_flag = NO_DATA;
-                break;
-            default:
-                break;
+            usleep(100000);// sleep for 0.1 second
         }
-        
-
-        usleep(1000000);
-        if(api_thread.joinable()){
-            api_thread.join();
-            // std::cout<<"API thread joined\n";
-            database.update_city_from_database(city);
-            led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
-        }
-
-        
-        n++;
-        update_sensors();
-        std::cout<<distance_sensor_values.at(0)<<' '<<distance_sensor_values.at(1)<<' '<<distance_sensor_values.at(2)<<'\n';
-        std::cout<<hall_sensor_value<<std::endl;
-        arduino_peripherals->led_control(0,n%256,n%256,n%256);
-        arduino_peripherals->motor_pwm_control(0,0,200);
 
     }
 
     led_matrix.change_page(Page::Stop, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
     arduino_peripherals->led_control(0,0,0,0);
-    arduino_peripherals->motor_pwm_control(0,0,0);
+    arduino_peripherals->motor_control(0,0,0);
     terminate_server_function();
     server_thread.join();
 

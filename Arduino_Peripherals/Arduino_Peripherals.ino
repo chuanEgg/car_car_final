@@ -3,9 +3,10 @@
 
 #define I2C_ADDRESS 3
 #define led_strip_num 1
-#define motor_num 1
+#define motor_num 2
 #define hall_sensor_num 1
-#define distance_sensor_num 2
+#define distance_sensor_num 3
+#define max_command_length 10
 
 #define LED_STRIP_RED 11
 #define LED_STRIP_GREEN 10
@@ -15,9 +16,10 @@
 #define FAN_PIN 5
 
 #define HALL_SENSOR_PIN 12
-#define DISTANCE_SENSOR_TRIG_PIN 8
-#define DISTANCE_SENSOR_ECHO_PIN_0 7
-#define DISTANCE_SENSOR_ECHO_PIN_1 4
+#define DISTANCE_SENSOR_TRIG_PIN 14
+#define DISTANCE_SENSOR_ECHO_PIN_0 15
+#define DISTANCE_SENSOR_ECHO_PIN_1 16
+#define DISTANCE_SENSOR_ECHO_PIN_2 17
 
 #define BUTTON_PIN 13
 
@@ -26,68 +28,159 @@ LED_Strip* led_strip_list[led_strip_num];
 Motor* motor_list[motor_num];
 Hall_Sensor* hall_sensor_list[hall_sensor_num];
 Button* button;
+char command[max_command_length];
 // Distance_Sensor* distance_sensor_list[distance_sensor_num];
 
-bool motor_on;
-unsigned long motor_start_time;
-unsigned long motor_duration = 10000;
+unsigned long button_pressed_time = 0;
+
+bool motor_on = false;
 
 void setup(){
   Wire.begin(I2C_ADDRESS); //set address of arduino for i2c 
   Wire.onReceive(receiveEvent); //Called when recieved I2C data
+  Wire.onRequest(requestEvent);
   Serial.begin(9600); 
-
-  led_strip_list[0] = new LED_Strip(LED_STRIP_RED,LED_STRIP_GREEN,LED_STRIP_BLUE);
   motor_list[0] = new Motor(MOTOR_PIN);
+  motor_list[1] = new Motor(FAN_PIN);
+  led_strip_list[0] = new LED_Strip(LED_STRIP_RED,LED_STRIP_GREEN,LED_STRIP_BLUE);
+  
   hall_sensor_list[0] = new Hall_Sensor(HALL_SENSOR_PIN);
   // distance_sensor_list[0] = new Distance_Sensor(DISTANCE_SENSOR_TRIG_PIN,DISTANCE_SENSOR_ECHO_PIN);
-  byte* distance_sensors_echo_pin_list = new byte[distance_sensor_num] {DISTANCE_SENSOR_ECHO_PIN_0, DISTANCE_SENSOR_ECHO_PIN_1};
+  byte* distance_sensors_echo_pin_list = new byte[distance_sensor_num] {DISTANCE_SENSOR_ECHO_PIN_0, DISTANCE_SENSOR_ECHO_PIN_1, DISTANCE_SENSOR_ECHO_PIN_2};
   HCSR04.begin( (byte) DISTANCE_SENSOR_TRIG_PIN , distance_sensors_echo_pin_list , (byte) distance_sensor_num );
 
   button = new Button(BUTTON_PIN);
-  motor_on = false;
+
+  for(int i = 0 ; i < max_command_length ; i++){
+    command[i] = 0;
+  }
 }
 
 void loop(){
   // testing
   // motor_list[0]->set_pwm(255);
   // for(int i = 0 ; i < 32 ; i++){
-  //   led_strip_list[0]->set_pwm(255,i*8,255);
+  //   led_strip_list[0]->set_pwm(i*8,0,0);
     
   //   Serial.println(hall_sensor_list[0]->get_value());
   //   double* distances = HCSR04.measureDistanceCm();
   //   Serial.print(distances[0]);
   //   Serial.print(" ");
   //   Serial.print(distances[1]);
+  //   Serial.print(" ");
+  //   Serial.print(distances[2]);
   //   Serial.print("--------\n");
   //   delay(1000);
   // }
 
-  if( !motor_on && button->get_value() > 0){
-    motor_on = true;
-    motor_start_time = millis();
-    motor_list[0]->set_pwm(255);
-    led_strip_list[0]->set_pwm(255,255,255);
+  // for(int i = 0 ; i < 32 ; i++){
+  //   led_strip_list[0]->set_pwm(i*8,0,0);
+  //   delay(100);
+  // }
+  // for(int i = 0 ; i < 32 ; i++){
+  //   led_strip_list[0]->set_pwm(256-i*8,0,0);
+  //   delay(100);
+  // }
+  // for(int i = 0 ; i < 32 ; i++){
+  //   led_strip_list[0]->set_pwm(0,i*8,0);
+  //   delay(100);
+  // }
+  // for(int i = 0 ; i < 32 ; i++){
+  //   led_strip_list[0]->set_pwm(0,256-i*8,0);
+  //   delay(100);
+  // }
+  // for(int i = 0 ; i < 32 ; i++){
+  //   led_strip_list[0]->set_pwm(0,0,i*8);
+  //   delay(100);
+  // } 
+  // for(int i = 0 ; i < 32 ; i++){
+  //   led_strip_list[0]->set_pwm(0,0,256-i*8);
+  //   delay(100);
+  // } 
+  // Serial.print("going\n");
+  // led_strip_list[0]->set_pwm(0,0,0);
+
+
+  // if user pressed button
+  if(button->get_value() && millis() - button_pressed_time > 200){
+    button_pressed_time = millis();
     Serial.println("button pressed");
+    bool is_running = false;
+    for(int i = 0 ; i < motor_num ; i++){
+      is_running = is_running || ( motor_list[i]->current_pwm > 0 );
+    }
+
+    if(is_running){  // if user pressed the button again before the motor stops (with 200ms spacing to prevent switch bounce), it's treated as a emergency stop which fan and motor stops
+      for(int i = 0 ; i < motor_num ; i++){
+        motor_list[i]->set_pwm(0);
+        //for testing
+        led_strip_list[0]->set_pwm(0,0,0);
+        //for testing
+      }
+    }
+    else{ //if user pressed button when no other motor is on, motor and fan turns on.
+      for(int i = 0 ; i < motor_num ; i++){
+        motor_list[i]->set_pwm( motor_list[i]->pwm_value );
+        motor_list[i]->start_time = millis();
+
+        //for testing
+        led_strip_list[0]->set_pwm(255,0,0);
+        Serial.println("start to run");
+        //for testing
+      }
+    }
+
+  }
+  // after timeout the motor and fan stops automatically
+  for(int i = 0 ; i < motor_num ; i++){
+    if( motor_list[i]->current_pwm > 0 && millis() - motor_list[i]->start_time > motor_list[i]->duration ){
+        motor_list[i]->set_pwm(0);
+        //for testing
+        led_strip_list[0]->set_pwm(0,0,0);
+        Serial.print("exited\n");
+        //for testing
+      }
   }
 
-  if( motor_on && (millis() - motor_start_time > motor_duration) ){
-    motor_on = false;
-    motor_list[0]->set_pwm(0);
-    led_strip_list[0]->set_pwm(0,0,0);
-  }
+  // if(button->get_value() &&  motor_on && (millis() - motor_list[0]->start_time > 200)){
+  //   motor_on = false;
+  //   motor_list[0]->set_pwm(0);
+  //   motor_list[1]->set_pwm(0);
+  // }
+
+  // if( motor_on && (millis() - motor_list[0]->start_time > motor_list[0]->duration ) ){
+  //   motor_on = false;
+  //   motor_list[0]->set_pwm(0);
+  //   motor_list[1]->set_pwm(0);
+  // }
+
+  // if(button->get_value() && millis() - button_pressed_time > 200){
+  //   button_pressed_time = millis();
+  //   Serial.println("button pressed");
+
+  //   if(motor_on == false){
+  //     motor_list[0]->set_pwm( motor_list[0]->pwm_value );
+  //     motor_list[1]->set_pwm( motor_list[0]->pwm_value );
+  //   }
+  // }
 }
 
 void receiveEvent(int numBytes){
-  char* data[numBytes];
+  Serial.println("Recieved I2C command!");
   for(int i = 0 ; i < numBytes; i++){
-    data[i] = 0;
+    command[i] = 0;
     if(Wire.available()){
-      data[i] = Wire.read();
+      command[i] = Wire.read();
+      Serial.print((int)command[i]);
+      Serial.print(' ');
     }
   }
+  Serial.print("\n");
+}
 
-  switch((int)data[0]){
+void requestEvent(){
+
+  switch((int)command[0]){
     case 0:
       for(int i = 0 ; i < led_strip_num; i++){
         led_strip_list[i]->set_pwm(0,0,0);
@@ -98,36 +191,78 @@ void receiveEvent(int numBytes){
       break;
       
     case 1:
-      if(data[1] < led_strip_num){
-        led_strip_list[(int)data[1]]->set_pwm((int)data[2],(int)data[3],(int)data[4]);
+      if(command[1] < led_strip_num){
+        led_strip_list[(int)command[1]]->set_pwm((int)command[2],(int)command[3],(int)command[4]);
       }
       break;
 
     case 2:
-      if(data[1] < motor_num){
-        motor_list[(int)data[1]]->set_pwm((int)data[2]);
+
+      switch((int)command[2]){
+        case 0:
+          motor_list[(int)command[1]]->set_pwm((int)command[3]);
+          break;
+        case 1:
+          motor_list[(int)command[1]]->duration = ( (command[3] << 24) + (command[4] << 16) + (command[5] << 8) + command[6] )*1000;
+          break;
+        case 2:
+          motor_list[(int)command[1]]->pwm_value = ((int)command[3]);
+          break;
       }
       break;
 
     case 3:
-      if(data[1] < distance_sensor_num){
-        Wire.write(hall_sensor_list[(int)data[1]]->get_value());
+      double* distances;
+      switch((int)command[1]){
+        case 0:
+          Wire.write(distance_sensor_num);
+          break;
+        case 1:
+          distances = HCSR04.measureDistanceCm();
+          char distance_value[2];
+          //ensure that value isn't negative
+          if(distances[(int)command[2]] < 0){
+            distances[(int)command[2]] = 0;
+          }
+          distance_value[0] = (char) ( ( (int)( distances[(int)command[2]] ) ) / 256 );
+          distance_value[1] = (char) ( ( (int)( distances[(int)command[2]] ) ) % 256 );
+          Wire.write(distance_value,(size_t)2);
+          break;
+        case 2:
+          distances = HCSR04.measureDistanceCm();
+          char* distance_values = new char[distance_sensor_num*2+1];
+          Serial.println("data sent:");
+          for(int i = 0 ; i < distance_sensor_num ; i++){
+            //ensure that value isn't negative
+            if(distances[i] < 0){
+              distances[i] = 0;
+            }
+            distance_values[i*2] = (char) ( ( (int)( distances[i] ) ) / 256 );
+            distance_values[i*2+1] = (char) ( ( (int)( distances[i] ) ) % 256 );
+            Serial.print((int)distance_values[i*2]);
+            Serial.print(' ');
+            Serial.print((int)distance_values[i*2+1]);
+            Serial.print(' ');
+          }
+          Serial.print('\n');
+          Wire.write(distance_values,(size_t)distance_sensor_num*2);
+          delete distance_values;
+          break;
       }
       break;
-    
     case 4:
-      if(data[1] < hall_sensor_num){
-        int value = hall_sensor_list[(int)data[1]]->get_value();
-        char* data;
-        data = new char[2];
-        data[0] = (char)(value >> 8);
-        data[1] = (char)(value % 256);
-        Wire.write(data,(size_t)2);
+      if(command[1] < hall_sensor_num){
+        int value = hall_sensor_list[(int)command[1]]->get_value();
+        Wire.write((char)value);
       }
       break;
 
     default:
       break;
   }
+  for(int i = 0 ; i < max_command_length ; i++){
+    command[i] = 0;
+  }
 }
+
 

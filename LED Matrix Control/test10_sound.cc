@@ -36,6 +36,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#include <SDL.h>
+#include <SDL_mixer.h>
+
 
 volatile bool interrupt_received = false;
 struct gpiod_chip *chip = nullptr;
@@ -63,10 +66,6 @@ std::atomic<int> location_ctrl(0);
 
 std::atomic<int> SHT30_temperature_x10(0), SHT30_humidity_x10(0), BH1750_lux(0);
 
-// sensor values on connected to arduino
-std::vector<int> distance_sensor_values;
-int hall_sensor_value = 0;
-
 
 SHT30* sht30;
 BH1750* bh1750;
@@ -87,16 +86,29 @@ void api_thread_function(const City& city, const char* api_key){
 void initiate_peripherals(){
     sht30 = new SHT30(GND);
     bh1750 = new BH1750(GND);
-    bh1750->change_mode(ONE_TIME_L_RESOLUTION_MODE);
+    bh1750->change_mode(CONTINUOUSLY_L_RESOLUTION_MODE);
     arduino_peripherals = new Arduino_Peripherals(0x03);
 
     std::vector<double> temp_humidity;
-    usleep(100000);
+    
     temp_humidity = sht30->get_temperature_humidity();
     SHT30_temperature_x10 = (int)(round(temp_humidity.at(0)*10));
     SHT30_humidity_x10 = (int)(round(temp_humidity.at(1)*10));
     BH1750_lux = bh1750->get_lux();
     usleep(100000);
+}
+
+void initiate_sound(){
+    if (SDL_Init(SDL_INIT_AUDIO) != 0) {
+        std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+        return;
+    }
+
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        std::cerr << "Mix_OpenAudio Error: " << Mix_GetError() << std::endl;
+        return;
+    }
+
 }
 
 void update_sensors(){
@@ -106,9 +118,6 @@ void update_sensors(){
     SHT30_temperature_x10 = (int)(round(temp_humidity.at(0)*10));
     SHT30_humidity_x10 = (int)(round(temp_humidity.at(1)*10));
     BH1750_lux = bh1750->get_lux();
-
-    distance_sensor_values = arduino_peripherals->get_all_distance_sensor_value(3);
-    hall_sensor_value = arduino_peripherals->get_hall_sensor_value(0);
 }
 
 int server_thread_function(){
@@ -300,7 +309,7 @@ int main(){
     int n = 0;
     int last_city_id = -1;
 
-    while(n<30){
+    while(n<600){
         std::cout<<(double)(SHT30_temperature_x10)/10<<' '<<(double)(SHT30_humidity_x10)/10<<' '<<BH1750_lux<<std::endl;
 
         if(last_city_id != city.id){
@@ -340,7 +349,7 @@ int main(){
         }
         
 
-        usleep(1000000);
+        usleep(100000);
         if(api_thread.joinable()){
             api_thread.join();
             // std::cout<<"API thread joined\n";
@@ -351,16 +360,16 @@ int main(){
         
         n++;
         update_sensors();
-        std::cout<<distance_sensor_values.at(0)<<' '<<distance_sensor_values.at(1)<<' '<<distance_sensor_values.at(2)<<'\n';
-        std::cout<<hall_sensor_value<<std::endl;
+        std::cout<<"Distance Sensor Value:"<<arduino_peripherals->get_distance_sensor_value(0)<<std::endl;
+        std::cout<<"Hall Sensor Value:"<<arduino_peripherals->get_hall_sensor_value(0)<<std::endl;
         arduino_peripherals->led_control(0,n%256,n%256,n%256);
-        arduino_peripherals->motor_pwm_control(0,0,200);
+        arduino_peripherals->motor_control(0,200);
 
     }
 
     led_matrix.change_page(Page::Stop, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
     arduino_peripherals->led_control(0,0,0,0);
-    arduino_peripherals->motor_pwm_control(0,0,0);
+    arduino_peripherals->motor_control(0,0);
     terminate_server_function();
     server_thread.join();
 
