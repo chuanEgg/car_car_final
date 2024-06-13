@@ -19,12 +19,12 @@
 #include <gpiod.h>
 
 const char filename[20] = "/dev/i2c-1";
-const char chipname[20] = "gpiochip0";
-extern struct gpiod_chip *chip;
+// const char chipname[20] = "gpiochip0";
+// extern struct gpiod_chip *chip;
 
-int initialize_chip();
+// int initialize_chip();
 
-int close_chip();
+// int close_chip();
 
 enum ADDRESS_SELECT{
     GND,
@@ -163,6 +163,10 @@ class Arduino_Peripherals{
         //Function to get all the distance sensors' value on the Arduino if the total number of distance sensors is known
         //return a vector with arbitrary length and values from 0 ~ 65535 on success, -1 on failure
         std::vector<int> get_all_distance_sensor_value(int num_sensors);
+
+        //Function to get all the distance sensors' value on the Arduino if the total number of distance sensors is known
+        //return a vector with arbitrary length and values from 0 ~ 65535 on success, -1 on failure
+        std::vector<int> get_all_distance_sensor_value_one_by_one(int num_sensors);
 
 
         //Function to get the hall sensor value on the Arduino

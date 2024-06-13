@@ -67,7 +67,16 @@ Agreement on how to send data through FIFO(used in fifo_communacation.h, main.py
     "3:-2147483648"
 5. For "location_id_ctrl", id = 4
     "4:0"
-6. To terminate server
+6. For "motor_pwm_ctrl", id = 5
+    "5:0"
+7. For "motor_time_duration_ctrl", id = 6
+    "6:0"
+8. For "fan_pwm_ctrl", id = 7
+    "7:0"
+9. For "fan_time_duration_ctrl", id = 8
+    "8:0"
+
+0. To terminate server
     "end:0"
 
 

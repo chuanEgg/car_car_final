@@ -38,7 +38,7 @@ class Motor{
   public:
 
     unsigned long duration = 10000;
-    int pwm_value = 100;
+    int pwm_value = 200;
     int current_pwm = 0;
     unsigned long start_time = 0;
 

@@ -92,10 +92,6 @@ int LED_Matrix::page(Page page, std::atomic<int>& PAGE_FLAG, std::atomic<int>& t
 */
 
 int LED_Matrix::change_page(Page page, std::atomic<int>& temperature, std::atomic<int>& humidity, std::atomic<int>& lux, const City& city ){
-    if(page == current_page){
-        return 0;
-    }
-    
     if(in_use == true){
         in_use = false;
         if(led_thread.joinable()){
@@ -216,7 +212,7 @@ int LED_Matrix::page0(std::atomic<int>& temperature, std::atomic<int>& humidity,
         int y = (int)round(precise_y);
         std::string line =  city.English_name_township + ", " + city.English_name_city +
             "  Temp " + city.City_Township_Weather_3_Days.MaxT.at(0) + " - " + city.City_Township_Weather_3_Days.MinT.at(0) + "C" + 
-            "  Rain " + city.City_Township_Weather_3_Days.PoP12h.at(0) + "%" 
+            "  Rain " + city.City_Township_Weather_3_Days.PoP12h.at(0) + "%";
 
         int length = rgb_matrix::DrawText(off_screen_canvas, time_font , x, y + time_font.baseline(), rgb_matrix::Color(0, 100, 255), NULL, line.c_str(), 0);
         precise_x -= speed;
@@ -240,6 +236,10 @@ int LED_Matrix::page0(std::atomic<int>& temperature, std::atomic<int>& humidity,
         last_time = std::chrono::system_clock::now();
 
     }
+    // Ensure that upon ending every page, the screen is cleared
+    off_screen_canvas->Clear();
+    off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
+    
     return 0;
 }
 
@@ -251,20 +251,35 @@ int LED_Matrix::page1(std::atomic<int>& temperature, std::atomic<int>& humidity,
     std::string humidity_str;
     std::string lux_str;
     std::string temp_and_humidity_str;
+    std::vector<std::string> weather_str_list;
 
-    int framerate = 30;
+    int framerate = 20;
+    int frame_num = 0;
     
-    auto last_time = std::chrono::system_clock::now();
+    auto last_time = std::chrono::system_clock::now();//for maintaining visual framerate
+    
+    ImageVector images = LoadImageAndScaleImage("../images/rem_32.gif",24, 24);
+    int cnt = 0;
     while(in_use){
+        cnt++;
         // Get the current time
         // Get the current time_point from the system clock
         auto now = std::chrono::system_clock::now();
+
+        // draw rem on ipper left corner with 24*24 size
+        CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 0, 0);
+        if(cnt%4==0){
+            frame_num += 1;
+            frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
+        }          
 
         // Convert time_point to time_t to make it easier to extract time information
         std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
 
         // Convert time_t to tm as a local time
         std::tm now_tm = *std::localtime(&now_time_t);
+
+        
 
         // Create the date and time string
         if(now_tm.tm_mon<10){
@@ -282,10 +297,10 @@ int LED_Matrix::page1(std::atomic<int>& temperature, std::atomic<int>& humidity,
         }
 
         if(now_tm.tm_hour<10){
-            time_str += '0' + std::to_string(now_tm.tm_hour) + ':';
+            time_str = '0' + std::to_string(now_tm.tm_hour) + ':';
         }
         else{
-            time_str += std::to_string(now_tm.tm_hour) + ':';
+            time_str = std::to_string(now_tm.tm_hour) + ':';
         }
 
         if(now_tm.tm_min<10){
@@ -296,28 +311,25 @@ int LED_Matrix::page1(std::atomic<int>& temperature, std::atomic<int>& humidity,
         }
 
 
-        temperature_str = std::to_string(temperature.load()/10) + '.' + std::to_string(temperature.load()%10) + "C";
+        temperature_str = std::to_string(temperature.load()/10) + '.' + std::to_string(temperature.load()%10);
         humidity_str = std::to_string(humidity.load()/10) + "%";
         lux_str = std::to_string(lux.load()) + "lux";
         temp_and_humidity_str = temperature_str + " " + humidity_str;
 
         // Draw the date
-        //at the top left of the screen
-        rgb_matrix::DrawText(off_screen_canvas, time_font, 0 , time_font.baseline()*1, rgb_matrix::Color(0, 100, 255), date_str.c_str());
+        //at the top right of the screen
+        rgb_matrix::DrawText(off_screen_canvas, time_font, 25 , time_font.baseline()*1, rgb_matrix::Color(0, 100, 255), date_str.c_str());
         // Draw the time
-        //at the top left of the screen
-        rgb_matrix::DrawText(off_screen_canvas, time_font, 0 , time_font.baseline()*2 + 1, rgb_matrix::Color(0, 100, 255), time_str.c_str());
+        //at the top right of the screen
+        rgb_matrix::DrawText(off_screen_canvas, time_font, 25 , time_font.baseline()*2 + 1, rgb_matrix::Color(0, 100, 255), time_str.c_str());
 
-        // draw the temperature 
-        rgb_matrix::DrawText(off_screen_canvas, time_font, 0, time_font.baseline()*3 + 2, rgb_matrix::Color(0, 255, 0), temperature_str.c_str());
-
-        // draw the humidity
-        rgb_matrix::DrawText(off_screen_canvas, time_font, 0, time_font.baseline()*4 + 2, rgb_matrix::Color(0, 255, 0), humidity_str.c_str());
-
+        // draw the temperature and humidity at the right of screen
+        rgb_matrix::DrawText(off_screen_canvas, time_font, 25, time_font.baseline()*3 + 2, rgb_matrix::Color(0, 255, 0), temp_and_humidity_str.c_str());
+        
         // Draw the weather information
         // Drawing as ticker
-        static double precise_x = 27;
-        static double precise_y = time_font.baseline()*3 + 2;
+        static double precise_x = off_screen_canvas->width() + 5;
+        static double precise_y = time_font.baseline()*4+1;
         static int letter_spacing = 0;
         static double speed = 0.8;
 
@@ -325,7 +337,7 @@ int LED_Matrix::page1(std::atomic<int>& temperature, std::atomic<int>& humidity,
         int y = (int)round(precise_y);
         std::string line =  city.English_name_township + ", " + city.English_name_city +
             "  Temp " + city.City_Township_Weather_3_Days.MaxT.at(0) + " - " + city.City_Township_Weather_3_Days.MinT.at(0) + "C" + 
-            "  Rain " + city.City_Township_Weather_3_Days.PoP12h.at(0) + "%" 
+            "  Rain " + city.City_Township_Weather_3_Days.PoP12h.at(0) + "%";
 
         int length = rgb_matrix::DrawText(off_screen_canvas, time_font , x, y + time_font.baseline(), rgb_matrix::Color(0, 100, 255), NULL, line.c_str(), 0);
         precise_x -= speed;
@@ -349,6 +361,9 @@ int LED_Matrix::page1(std::atomic<int>& temperature, std::atomic<int>& humidity,
         last_time = std::chrono::system_clock::now();
 
     }
+    // Ensure that upon ending every page, the screen is cleared
+    off_screen_canvas->Clear();
+    off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
     return 0;
 }
 
@@ -361,6 +376,7 @@ int LED_Matrix::page2(std::atomic<int>& temperature, std::atomic<int>& humidity,
     while(in_use){
 
         CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 0, 0);
+        CopyImageToCanvas(images.at(frame_num), off_screen_canvas, 32, 0);
         frame_num += 1;
         frame_num = frame_num >= (int)images.size() ? 0 : frame_num;
                     
@@ -375,6 +391,9 @@ int LED_Matrix::page2(std::atomic<int>& temperature, std::atomic<int>& humidity,
         last_time = std::chrono::system_clock::now();
 
     }
+    // Ensure that upon ending every page, the screen is cleared
+    off_screen_canvas->Clear();
+    off_screen_canvas = matrix->SwapOnVSync(off_screen_canvas);
     return 0;
 }
 

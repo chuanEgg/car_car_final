@@ -295,7 +295,7 @@ int main(){
         return 1;
     }
 
-    led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);// initialize the LED matrix content
+    led_matrix.change_page(Page::Page0, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);// initialize the LED matrix content
 
     int n = 0;
     int last_city_id = -1;
@@ -354,13 +354,13 @@ int main(){
         std::cout<<distance_sensor_values.at(0)<<' '<<distance_sensor_values.at(1)<<' '<<distance_sensor_values.at(2)<<'\n';
         std::cout<<hall_sensor_value<<std::endl;
         arduino_peripherals->led_control(0,n%256,n%256,n%256);
-        arduino_peripherals->motor_pwm_control(0,0,200);
+        arduino_peripherals->motor_pwm_control(0,100);
 
     }
 
     led_matrix.change_page(Page::Stop, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
     arduino_peripherals->led_control(0,0,0,0);
-    arduino_peripherals->motor_pwm_control(0,0,0);
+    arduino_peripherals->motor_pwm_control(0,0);
     terminate_server_function();
     server_thread.join();
 

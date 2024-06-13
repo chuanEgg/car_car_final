@@ -63,18 +63,27 @@
         <form method="POST">
             <select name="dropdown", id="dropdown-list">
                 {% for i in range(length) %}
-                    {% if codes[i] == default_location_code %}
+                    {% if codes[i] == location_code %}
                         <option value="{{ codes[i] }}" selected>{{ names[i] }}</option>
                     {% else %}
                         <option value="{{ codes[i] }}">{{ names[i] }}</option>
                     {% endif %}
                 {% endfor %}
             </select>
-            <button type="submit" id="submitBtn" >Select</button>
-        </form>
-      </center>
-    </div>
+            <h3>Adjust Motor and Fan Parameters</h3>
+            <h6>Motor PWM</h6>
+            <input type="number" name="motor_pwm" value = {{ motor_pwm }} required>
+            <h6>Motor Time Duration</h6>
+            <input type="number" name="motor_time_duration" value = {{ motor_time_duration }} required>
+            <h6>Fan PWM</h6>
+            <input type="number" name="fan_pwm" value = {{ fan_pwm }} required>
+            <h6>Fan Time Duration</h6>
+            <input type="number" name="fan_time_duration" value = {{ fan_time_duration }} required>
 
+            <button type="submit" id="submitBtn" >Submit</button>
+          </form>
+      </center>
+  </div>
 
 </body>
 

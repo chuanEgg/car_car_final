@@ -36,14 +36,20 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#include <SDL.h>
-#include <SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 
 
 volatile bool interrupt_received = false;
 struct gpiod_chip *chip = nullptr;
 
 const char* filenames[1] = {"../images/sakura.gif"};
+
+const int welcome_audio_num = 3;
+const char* welcome_audio_filenames[3] = {"../audio/Welcome Home Amagami.wav", "../audio/Welcome Home Nisekoi.wav", "../audio/Welcome Home One Room.wav"};
+const int goodbye_audio_num = 3;
+const char* goodbye_audio_filenames[1] = {"../audio/Goodbye Onimai.wav"};
+
 const char* time_font_filename = "../fonts/5x7.bdf";
 const char* database_filename = "../../SQLite Database/database.db";
 const char* python_fifo_filename = "../Python Flask Server/python_fifo";
@@ -71,6 +77,7 @@ SHT30* sht30;
 BH1750* bh1750;
 Arduino_Peripherals* arduino_peripherals;
 
+SDL_AudioDeviceID audio_device = 2; // for audio device
 
 void signal_handler(int signal){
     interrupt_received = true;
@@ -104,11 +111,66 @@ void initiate_sound(){
         return;
     }
 
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+
+    // int count = SDL_GetNumAudioDevices(0);
+    // for (int i = 0; i < count; i++) {
+    //     const char* device_name = SDL_GetAudioDeviceName(i, 0);
+    //     std::cout<<"Audio device "<<i<<": "<<device_name<<"\n";
+    // }
+    // int device_index = 0;  // choose device index from available devices
+    // std::cout<<"Choose audio device index: ";
+    // std::cin>>device_index;
+
+    // SDL_AudioSpec desired, obtained;
+    // // Set desired audio specifications
+    // desired.freq = 48000;
+    // desired.format = MIX_DEFAULT_FORMAT;
+    // desired.channels = 2;
+    // desired.samples = 4096;
+    // desired.callback = NULL;  // NULL for using SDL's audio callback
+
+    // // Open audio device
+    // const char* device_name = SDL_GetAudioDeviceName(device_index, 0); // choose device index from available devices
+    // audio_device = SDL_OpenAudioDevice(device_name, 0, &desired, &obtained, 0);
+
+
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) != 0) {
         std::cerr << "Mix_OpenAudio Error: " << Mix_GetError() << std::endl;
-        return;
+        // SDL_Quit();
+        // return 1;
     }
 
+    // if (audio_device == 0) {
+    //     SDL_Log("Failed to open audio device: %s", SDL_GetError());
+    // } 
+    // else {
+    //     SDL_Log("Audio device opened successfully: %s", device_name);
+    // }
+
+}
+
+void play_welcome_audio(){
+    // int audio_index = rand()%welcome_audio_num;
+    std::cout<<"in play welcome audio\n";
+    Mix_Chunk *sound = Mix_LoadWAV(welcome_audio_filenames[0]);
+    if (sound == NULL) {
+        SDL_Log("Failed to load sound: %s", Mix_GetError());
+    } 
+    else if( Mix_PlayChannel(-1, sound, 0) != 0){
+        std::cerr<<"Failed to play sound: "<<Mix_GetError()<<std::endl;
+    }
+
+    while (Mix_Playing(-1)) {
+        SDL_Delay(100);
+    }
+    Mix_FreeChunk(sound);
+    std::cout<<"out play welcome audio\n";
+}
+
+void close_sound(){
+    Mix_CloseAudio();
+    SDL_CloseAudioDevice(audio_device);
+    SDL_Quit();
 }
 
 void update_sensors(){
@@ -277,15 +339,20 @@ int main(){
         return 1;
     }
     std::cout<<api_key<<std::endl;
-    
 
+    std::cout<<"Initiating peripherals\n";
     initiate_peripherals();// initiate sensors
 
     
     usleep(5000000);// sleep to prevent conflict of initiating LED matrix and I2C devices
 
+    std::cout<<"Initiating LED matrix\n";
     LED_Matrix led_matrix(time_font_filename);// initiate LED matrix
 
+    usleep(5000000);// sleep to prevent conflict of initiating LED matrix and I2C devices
+
+    std::cout<<"Initiating sound\n";
+    initiate_sound();// initiaate sounds
 
     std::thread server_thread(server_thread_function);// initiate server thread
     
@@ -304,12 +371,16 @@ int main(){
         return 1;
     }
 
+    play_welcome_audio();// play welcome audio
+
     led_matrix.change_page(page, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);// initialize the LED matrix content
+
+    
 
     int n = 0;
     int last_city_id = -1;
 
-    while(n<600){
+    while(n<30){
         std::cout<<(double)(SHT30_temperature_x10)/10<<' '<<(double)(SHT30_humidity_x10)/10<<' '<<BH1750_lux<<std::endl;
 
         if(last_city_id != city.id){
@@ -363,15 +434,17 @@ int main(){
         std::cout<<"Distance Sensor Value:"<<arduino_peripherals->get_distance_sensor_value(0)<<std::endl;
         std::cout<<"Hall Sensor Value:"<<arduino_peripherals->get_hall_sensor_value(0)<<std::endl;
         arduino_peripherals->led_control(0,n%256,n%256,n%256);
-        arduino_peripherals->motor_control(0,200);
+        arduino_peripherals->motor_pwm_control(0,200);
 
     }
 
     led_matrix.change_page(Page::Stop, SHT30_temperature_x10, SHT30_humidity_x10, BH1750_lux, city);
     arduino_peripherals->led_control(0,0,0,0);
-    arduino_peripherals->motor_control(0,0);
+    arduino_peripherals->motor_pwm_control(0,0);
     terminate_server_function();
     server_thread.join();
+
+    close_sound();
 
     return 0;
 }

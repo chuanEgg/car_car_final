@@ -15,7 +15,7 @@ Database::~Database(){
 Control Database::get_control_parameters(){    
     char* zErrMsg = 0;
     int rc;//sqlite execution return value, 0 for success
-    const char* read_command = "SELECT page_ctrl, page_activation, location_id_ctrl FROM Controls";
+    const char* read_command = "SELECT page_ctrl, page_activation, location_id_ctrl , motor_pwm_ctrl, motor_time_duration_ctrl, fan_pwm_ctrl, fan_time_duration_ctrl  FROM Controls";
     const char* write_command = "UPDATE Controls set page_ctrl = 0 ";
     Control output;
     output.page_ctrl = 0; //default value for moving 0 page forward or backward
@@ -314,6 +314,10 @@ int Database::callback_v1(void* data, int argc, char** argv, char** azColName) {
     result->page_ctrl = atoi(argv[0]);
     result->page_activation = atoi(argv[1]);
     result->location_ctrl = atoi(argv[2]);
+    result->motor_pwm_ctrl = atoi(argv[3]);
+    result->motor_time_duration_ctrl = atoi(argv[4]);
+    result->fan_pwm_ctrl = atoi(argv[5]);
+    result->fan_time_duration_ctrl = atoi(argv[6]);
     return 0;
 }
 

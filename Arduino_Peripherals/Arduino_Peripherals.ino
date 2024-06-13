@@ -28,12 +28,127 @@ LED_Strip* led_strip_list[led_strip_num];
 Motor* motor_list[motor_num];
 Hall_Sensor* hall_sensor_list[hall_sensor_num];
 Button* button;
-char command[max_command_length];
+double* distances;
+uint8_t command[max_command_length];
 // Distance_Sensor* distance_sensor_list[distance_sensor_num];
 
 unsigned long button_pressed_time = 0;
 
 bool motor_on = false;
+
+
+
+void receiveEvent(int numBytes){
+  // Serial.println("Recieved I2C command!");
+  for(int i = 0 ; i < numBytes; i++){
+    command[i] = 0;
+    if(Wire.available()){
+      command[i] = Wire.read();
+      // Serial.print((int)command[i]);
+      // Serial.print(' ');
+    }
+  }
+  Serial.print("\n");
+  switch((int)command[0]){
+    case 0:
+      for(int i = 0 ; i < led_strip_num; i++){
+        led_strip_list[i]->set_pwm(0,0,0);
+      }
+      for(int i = 0 ; i < motor_num; i++){
+        motor_list[i]->set_pwm(0);
+      }
+      break;
+      
+    case 1:
+      if(command[1] < led_strip_num){
+        led_strip_list[(int)command[1]]->set_pwm((int)command[2],(int)command[3],(int)command[4]);
+        // Serial.println("LED set by i2c command");
+      }
+      break;
+    case 2:
+      for(int i = 0 ; i < numBytes; i++){
+        Serial.print(command[i]);
+        Serial.print(' ');
+      }
+      Serial.print('\n');
+      switch((int)command[2]){
+        case 0:
+          motor_list[(int)command[1]]->set_pwm((int)command[3]);
+          break;
+        case 1:
+          motor_list[(int)command[1]]->duration = ( (command[3] << 24) + (command[4] << 16) + (command[5] << 8) + command[6] )*1000;
+          break;
+        case 2:
+          motor_list[(int)command[1]]->pwm_value = ((int)command[3]);
+          break;
+      }
+      Serial.print(motor_list[0]->pwm_value);
+      Serial.print(' ');
+      Serial.print(motor_list[1]->pwm_value);
+      Serial.print('\n');
+      break;
+
+    default:
+      break;
+  }
+}
+
+void requestEvent(){
+
+  switch((int)command[0]){
+    case 3:
+      switch((int)command[1]){
+        case 0:
+          Wire.write(distance_sensor_num);
+          break;
+        case 1:
+          uint8_t distance_value[2];
+          //ensure that value isn't negative
+          if(distances[(int)command[2]] < 0){
+            distances[(int)command[2]] = 0;
+          }
+          distance_value[0] = (uint8_t) ( ( (int)( distances[(int)command[2]] ) ) / 256 );
+          distance_value[1] = (uint8_t) ( ( (int)( distances[(int)command[2]] ) ) % 256 );
+          Wire.write(distance_value,(size_t)2);
+          break;
+        case 2:
+          uint8_t* distance_values = new uint8_t[distance_sensor_num*2+1];
+          // Serial.println("data sent:");
+          for(int i = 0 ; i < distance_sensor_num ; i++){
+            //ensure that value isn't negative
+            if(distances[i] < 0){
+              distances[i] = 0;
+            }
+            distance_values[i*2] = (uint8_t) ( ( (int)( distances[i] ) ) / 256 );
+            distance_values[i*2+1] = (uint8_t) ( ( (int)( distances[i] ) ) % 256 );
+            // Serial.print((int)distance_values[i*2]);
+            // Serial.print(' ');
+            // Serial.print((int)distance_values[i*2+1]);
+            // Serial.print(' ');
+          }
+          // Serial.print('\n');
+          Wire.write(distance_values,(size_t)distance_sensor_num*2);
+          delete distance_values;
+          break;
+      }
+      break;
+    case 4:
+      if(command[1] < hall_sensor_num){
+        uint8_t value = (uint8_t) hall_sensor_list[(int)command[1]]->get_value();
+        Wire.write(value);
+      }
+      break;
+
+    default:
+      break;
+  }
+  for(int i = 0 ; i < max_command_length ; i++){
+    command[i] = 0;
+  }
+}
+
+
+
 
 void setup(){
   Wire.begin(I2C_ADDRESS); //set address of arduino for i2c 
@@ -61,17 +176,16 @@ void loop(){
   // motor_list[0]->set_pwm(255);
   // for(int i = 0 ; i < 32 ; i++){
   //   led_strip_list[0]->set_pwm(i*8,0,0);
-    
-  //   Serial.println(hall_sensor_list[0]->get_value());
-  //   double* distances = HCSR04.measureDistanceCm();
-  //   Serial.print(distances[0]);
-  //   Serial.print(" ");
-  //   Serial.print(distances[1]);
-  //   Serial.print(" ");
-  //   Serial.print(distances[2]);
-  //   Serial.print("--------\n");
-  //   delay(1000);
-  // }
+    distances = HCSR04.measureDistanceCm();
+    // Serial.println(hall_sensor_list[0]->get_value());
+    // Serial.print(distances[0]);
+    // Serial.print(" ");
+    // Serial.print(distances[1]);
+    // Serial.print(" ");
+    // Serial.print(distances[2]);
+    // Serial.print("--------\n");
+    // delay(300);
+  
 
   // for(int i = 0 ; i < 32 ; i++){
   //   led_strip_list[0]->set_pwm(i*8,0,0);
@@ -136,7 +250,7 @@ void loop(){
     if( motor_list[i]->current_pwm > 0 && millis() - motor_list[i]->start_time > motor_list[i]->duration ){
         motor_list[i]->set_pwm(0);
         //for testing
-        led_strip_list[0]->set_pwm(0,0,0);
+        // led_strip_list[0]->set_pwm(0,0,0);
         Serial.print("exited\n");
         //for testing
       }
@@ -164,105 +278,4 @@ void loop(){
   //   }
   // }
 }
-
-void receiveEvent(int numBytes){
-  Serial.println("Recieved I2C command!");
-  for(int i = 0 ; i < numBytes; i++){
-    command[i] = 0;
-    if(Wire.available()){
-      command[i] = Wire.read();
-      Serial.print((int)command[i]);
-      Serial.print(' ');
-    }
-  }
-  Serial.print("\n");
-}
-
-void requestEvent(){
-
-  switch((int)command[0]){
-    case 0:
-      for(int i = 0 ; i < led_strip_num; i++){
-        led_strip_list[i]->set_pwm(0,0,0);
-      }
-      for(int i = 0 ; i < motor_num; i++){
-        motor_list[i]->set_pwm(0);
-      }
-      break;
-      
-    case 1:
-      if(command[1] < led_strip_num){
-        led_strip_list[(int)command[1]]->set_pwm((int)command[2],(int)command[3],(int)command[4]);
-      }
-      break;
-
-    case 2:
-
-      switch((int)command[2]){
-        case 0:
-          motor_list[(int)command[1]]->set_pwm((int)command[3]);
-          break;
-        case 1:
-          motor_list[(int)command[1]]->duration = ( (command[3] << 24) + (command[4] << 16) + (command[5] << 8) + command[6] )*1000;
-          break;
-        case 2:
-          motor_list[(int)command[1]]->pwm_value = ((int)command[3]);
-          break;
-      }
-      break;
-
-    case 3:
-      double* distances;
-      switch((int)command[1]){
-        case 0:
-          Wire.write(distance_sensor_num);
-          break;
-        case 1:
-          distances = HCSR04.measureDistanceCm();
-          char distance_value[2];
-          //ensure that value isn't negative
-          if(distances[(int)command[2]] < 0){
-            distances[(int)command[2]] = 0;
-          }
-          distance_value[0] = (char) ( ( (int)( distances[(int)command[2]] ) ) / 256 );
-          distance_value[1] = (char) ( ( (int)( distances[(int)command[2]] ) ) % 256 );
-          Wire.write(distance_value,(size_t)2);
-          break;
-        case 2:
-          distances = HCSR04.measureDistanceCm();
-          char* distance_values = new char[distance_sensor_num*2+1];
-          Serial.println("data sent:");
-          for(int i = 0 ; i < distance_sensor_num ; i++){
-            //ensure that value isn't negative
-            if(distances[i] < 0){
-              distances[i] = 0;
-            }
-            distance_values[i*2] = (char) ( ( (int)( distances[i] ) ) / 256 );
-            distance_values[i*2+1] = (char) ( ( (int)( distances[i] ) ) % 256 );
-            Serial.print((int)distance_values[i*2]);
-            Serial.print(' ');
-            Serial.print((int)distance_values[i*2+1]);
-            Serial.print(' ');
-          }
-          Serial.print('\n');
-          Wire.write(distance_values,(size_t)distance_sensor_num*2);
-          delete distance_values;
-          break;
-      }
-      break;
-    case 4:
-      if(command[1] < hall_sensor_num){
-        int value = hall_sensor_list[(int)command[1]]->get_value();
-        Wire.write((char)value);
-      }
-      break;
-
-    default:
-      break;
-  }
-  for(int i = 0 ; i < max_command_length ; i++){
-    command[i] = 0;
-  }
-}
-
 

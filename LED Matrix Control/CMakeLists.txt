@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(Matrix)
 set(CMAKE_CXX_STANDARD 11)
-set(result_exe "test9_arduino_binding")
-set(file1 "test9_arduino_binding.cc")
+set(result_exe "test11_combined")
+set(file1 "test11_combined.cc")
 
 # Include pkg-config support
 include(FindPkgConfig)
@@ -47,6 +47,30 @@ if(CURL_FOUND)
 else()
     message("CURL not found")
 endif()
+
+find_package(SDL2 REQUIRED)
+#check if SDL2 was found
+if(SDL2_FOUND)
+    message("SDL2 found")
+    include_directories(${SDL2_INCLUDE_DIRS})
+    target_link_libraries(${result_exe} ${SDL2_LIBRARIES})
+else()
+    message("SDL2 not found")
+endif()
+
+# find_package(SDL2_mixer REQUIRED)
+# #check if SDL2_mixer was found
+# if(SDL2_MIXER_FOUND)
+#     message("SDL2_mixer found")
+#     include_directories(${SDL2_MIXER_INCLUDE_DIRS})
+#     target_link_libraries(${result_exe} ${SDL2_MIXER_LIBRARIES})
+# else()
+#     message("SDL2_mixer not found")
+# endif()
+
+pkg_check_modules(SDL2_mixer REQUIRED SDL2_mixer)
+include_directories(${SDL2_mixer_INCLUDE_DIRS})
+target_link_libraries(${result_exe} ${SDL2_mixer_LIBRARIES})
 
 pkg_check_modules(LIBGPIOD REQUIRED libgpiod)
 include_directories(${LIBGPIOD_INCLUDE_DIRS})

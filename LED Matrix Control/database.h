@@ -18,6 +18,10 @@ struct Control{
     int page_ctrl;
     int page_activation;
     int location_ctrl;
+    int motor_pwm_ctrl;
+    int motor_time_duration_ctrl;
+    int fan_pwm_ctrl;
+    int fan_time_duration_ctrl;
 };
 
 

@@ -17,7 +17,12 @@ CREATE TABLE Location_Names (
 CREATE TABLE Controls (
     page_ctrl INTEGER DEFAULT 0, -- control how much page to advance or go back
     page_activation INTEGER DEFAULT -2147483648, -- control which page to show, use bit number n to indicate whether page n is on
-    location_id_ctrl INTEGER DEFAULT 0 --store current location code
+    location_id_ctrl INTEGER DEFAULT 0, --store current location code
+    motor_pwm_ctrl INTEGER DEFAULT 1, --store motor max pwm
+    motor_time_duration_ctrl INTEGER DEFAULT 30, --store motor time duration
+    fan_pwm_ctrl INTEGER DEFAULT 1, --store fan max pwm
+    fan_time_duration_ctrl INTEGER DEFAULT 30 --store fan time duration
+
 );
 
 

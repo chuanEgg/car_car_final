@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, g
+from flask import Flask, render_template, jsonify, request, g, redirect, url_for
 import asyncio
 import sqlite3, socket
 
@@ -10,7 +10,7 @@ LED_Matrix_server_address = ('localhost', 15000)
 
 app = Flask(__name__)
 
-async def send_data_to_LED_Matrix(data:str):
+def send_data_to_LED_Matrix(data:str):
 	try:
 		# Create a socket object
 		client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -44,31 +44,77 @@ def close_db(e=None):
 def hello():
 	conn = get_db()
 	cursor = conn.cursor() 
+ 
+	cursor.execute("SELECT location_id_ctrl , motor_pwm_ctrl, motor_time_duration_ctrl, fan_pwm_ctrl, fan_time_duration_ctrl FROM Controls")
+	result = cursor.fetchall()
+	print(result)
+	default_location_code = result[0][0]
+	default_motor_pwm = result[0][1]
+	default_motor_time_duration = result[0][2]
+	default_fan_pwm = result[0][3]
+	default_fan_time_duration = result[0][4]
+ 
 	if request.method == 'POST':
-		location_code = request.form['dropdown']
+		location_code_new = request.form['dropdown']
+		motor_pwm_new = request.form['motor_pwm']
+		motor_time_duration_new = request.form['motor_time_duration']
+		fan_pwm_new = request.form['fan_pwm']
+		fan_time_duration_new = request.form['fan_time_duration']
+		# print(request.form)
   		#send the new location code to  main thread via fifo
-		message = "4:"+str(location_code)
-		send_data_to_LED_Matrix(message)
-  
-		# update the location code in the database
-		cursor.execute("UPDATE Controls SET location_id_ctrl = ?",(location_code,))
+		query = "UPDATE Controls SET location_id_ctrl=?, motor_pwm_ctrl=?, motor_time_duration_ctrl=?, fan_pwm_ctrl=?, fan_time_duration_ctrl=?"
+		# Execute the query with the parameters
+		cursor.execute(query, (location_code_new, motor_pwm_new, motor_time_duration_new, fan_pwm_new, fan_time_duration_new))
 		conn.commit()
+		if( int(location_code_new) != int(default_location_code) ):
+			message = "4:"+str(location_code_new)
+			send_data_to_LED_Matrix(message)
+			print(location_code_new)
+   
+		elif( int(motor_pwm_new) != int(default_motor_pwm) ):
+			message = "5:"+str(motor_pwm_new)
+			send_data_to_LED_Matrix(message)
+			print(motor_pwm_new)
+
+		elif( int(motor_time_duration_new) != int(default_motor_time_duration) ):
+			message = "6:"+str(motor_time_duration_new)
+			send_data_to_LED_Matrix(message)
+			print(motor_time_duration_new)
+
+		elif( int(fan_pwm_new) != int(default_fan_pwm) ):
+			message = "7:"+str(fan_pwm_new)
+			send_data_to_LED_Matrix(message)
+			print(fan_pwm_new)
+   
+		elif( int(fan_time_duration_new) != int(default_fan_time_duration) ):	
+			message = "8:"+str(fan_time_duration_new)
+			send_data_to_LED_Matrix(message)
+   
+ 
 	cursor.execute("SELECT Chinese_Name FROM Location_Names")
 	name_list = cursor.fetchall()
 	cursor.execute("SELECT id FROM Location_Names")
 	code_list = cursor.fetchall()
 	
-	cursor.execute("SELECT location_id_ctrl FROM Controls")
-	default_location_code = cursor.fetchall()[0][0]
-
 	for i in range(len(name_list)):
 		name_list[i] = name_list[i][0]
 		code_list[i] = code_list[i][0]
- 
-	return render_template('index.html', names=name_list, codes = code_list, length = len(code_list), default_location_code = default_location_code)
+  
+	cursor.execute("SELECT location_id_ctrl , motor_pwm_ctrl, motor_time_duration_ctrl, fan_pwm_ctrl, fan_time_duration_ctrl FROM Controls")
+	result = cursor.fetchall()
+	print(result)
+	default_location_code = result[0][0]
+	default_motor_pwm = result[0][1]
+	default_motor_time_duration = result[0][2]
+	default_fan_pwm = result[0][3]
+	default_fan_time_duration = result[0][4]
+
+	# cursor.close() 
+
+	return render_template('index.html', names=name_list, codes = code_list, length = len(code_list), location_code = default_location_code, motor_pwm = default_motor_pwm, motor_time_duration = default_motor_time_duration, fan_pwm = default_fan_pwm, fan_time_duration = default_fan_time_duration)
 
 @app.route('/left_button_press', methods=['POST'])
-async def left_button_press():
+def left_button_press():
 	data = "1:0"
 	send_data_to_LED_Matrix(data)
 	# try:
@@ -84,7 +130,7 @@ async def left_button_press():
 	return jsonify({"success": True})
 
 @app.route('/right_button_press', methods=['POST'])
-async def right_button_press():
+def right_button_press():
 	data = "0:0"
 	send_data_to_LED_Matrix(data)
 	# try:
@@ -96,6 +142,26 @@ async def right_button_press():
 	# 	pass
 
 	return jsonify({"success": True})
+
+@app.route('/submit', methods=['POST'])
+def submit():
+    motor_pwm = request.form['motor_pwm']
+    motor_time_duration = request.form['motor_time_duration']
+    fan_pwm = request.form['fan_pwm']
+    fan_time_duration = request.form['fan_time_duration']
+    
+    conn = get_db()
+    cursor = conn.cursor() 
+    
+    
+    # Commit the changes
+    conn.commit()
+
+	# Close the cursor and connection
+    cursor.close()
+    conn.close()
+    return redirect(url_for('hello'), code=200)
+
 
 if __name__=='__main__': 
   
